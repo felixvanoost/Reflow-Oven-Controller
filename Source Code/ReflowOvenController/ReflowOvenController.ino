@@ -1,4 +1,8 @@
-// Reflow Oven Controller Shield for the Arduino
+// Copyright Felix van Oost 2015.
+// This documentation describes Open Hardware and is licensed under the CERN OHL v1.2. You may redistribute and modify this documentation under the terms of the CERN OHL v1.2. 
+// This documentation is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR PURPOSE. Please see the CERN OHL v1.2 for applicable conditions.
+
+// Reflow Oven Controller for the Arduino
 // v1.0, Built 10/04/2015
 
 void setup() 
