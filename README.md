@@ -24,11 +24,22 @@ The specific thermal profile followed by the microcontroller will depend on the 
 Functionality
 ----------
 
-For this project, an Arduino Uno will control the toaster oven by following a user-defined thermal profile. The following main commponents are required:
+For this project, an Arduino Uno will be used to control the toaster oven by following a user-defined thermal profile. The following main functional blocks are required:
 
-• A solid-state relay to switch the oven on and off.
-• Thermocouple wire to measure the temperature inside the oven.
-• An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino.
-• A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading.
-• Pushbuttons to enable the user to set the desired thermal profile parameters and start / stop the reflow process.
-• LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete.
+- A solid-state relay to switch the oven on and off.
+- Thermocouple wire to measure the temperature inside the oven.
+- An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino.
+- A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading.
+- Pushbuttons to enable the user to set the desired thermal profile parameters and start / stop the reflow process.
+- LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete.
+
+----------
+Components List
+----------
+
+- Arduino Uno or equivalent (I'm using an OSEPP Uno R3 Plus for this project)
+- Arduino Proto Shield or equivalent
+- J-Type thermocouple wire (must be rated for at least 300C)
+- Texas Instruments LM35Z Temperature Sensor (very easy to integrate both in software and hardware)
+- Analog Devices OP07 Op-Amp (low input offset voltage characteristics)
+- Intersil ICL7660 DC-DC Converter or equivalent (provides +/-5V output to power the op-amp)
