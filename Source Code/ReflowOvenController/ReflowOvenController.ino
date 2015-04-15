@@ -5,28 +5,34 @@
 // Reflow Oven Controller for the Arduino Uno
 // v1.0, Built 12/04/2015
 
-#define thermPin        0                                           // Define thermocouple input pin (A0)
-#define junctionPin     1                                           // Define cold junction input pin (A1)
-  
-#define setButtonPin    2                                           // Define pushbutton input pins (D2-D4)
-#define incButtonPin    3
-#define decButtonPin    4
-#define LED1Pin         5                                           // Define LED output pins (D5-D8)
-#define LED2Pin         6
-#define LED3Pin         7
-#define LED4Pin         8
-#define buzzerPin       9                                           // Define buzzer output pin (D9)
-#define ovenPin         10                                          // Define oven SSR pin (D10)
+#define thermPin            0                                       // Define thermocouple input pin (A0)
+#define junctionPin         1                                       // Define cold junction input pin (A1)
 
-#define BUTTONSPEED     20                                          // Pushbutton delay (ms)
+#define setButtonPin        2                                       // Define pushbutton input pins (D2-D4)
+#define incButtonPin        3
+#define decButtonPin        4
+#define LED1Pin             5                                       // Define LED output pins (D5-D8)
+#define LED2Pin             6
+#define LED3Pin             7
+#define LED4Pin             8
+#define buzzerPin           9                                       // Define buzzer output pin (D9)
+#define ovenPin             10                                      // Define oven SSR pin (D10)
 
-int soakTemp = 150;                                                 // Declare thermal profile variables and initialise to default values
+#define BUTTON_SPEED        20                                      // Pushbutton delay (ms)
+#define SOAK_TEMP_OFFSET    15                                      // Soak temperature offset (to account for embodied heat in oven at soak stage)
+#define REFLOW_TEMP_OFFSET  8                                       // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
+#define SAFE_TEMP           60                                      // Safe-to-handle temperature
+
+int soakTemp = 150;                                                 // Declare thermal profile parameter variables and initialise to default values
 int soakTime = 60;
 int reflowTemp = 220;
 int reflowTime = 45;
 
 int thermTemp = 0;                                                  // Declare temperature variables
 int junctionTemp = 0;
+
+int processTime = 0;                                                // Declare time variables
+int stateTime = 0;
 
 void setup() 
 {
@@ -72,35 +78,41 @@ int getThermTemp()
 // Returns:		-
 void readButtons(int profileParameter)
 {
-  while(digitalRead(setButtonPin) != 0)
+  while(digitalRead(setButtonPin) == 0)
   {
     if(digitalRead(incButtonPin) == 0)
     {
-      profileParameter++;                                           // Increment variable if increment button is pressed
+      profileParameter++;                                           // Increment parameter if increment button is pressed
     }
     if(digitalRead(decButtonPin) == 0)
     {
       profileParameter--;                                           // Decrement variable if decrement button is pressed
+      
     }
-    delay(BUTTONSPEED);
+    Serial.print(profileParameter);                                 // Display parameter in serial monitor
+    Serial.print("\r");                                             // Return to start of line
+    delay(BUTTON_SPEED);
   }
 }
 
-// Description:		Allows user to set the four thermal profile parameters using the pusbuttons
+// Description:		Allows user to set the four thermal profile parameters using pusbuttons
 // Parameters:		-
 // Returns:		-
 void setParameters()
 {
+  Serial.println("Soak Temperature:");
   readButtons(soakTemp);                                            // Set soak temperature
+  Serial.println("Soak Time:");
   readButtons(soakTime);                                            // Set soak time
+  Serial.println("Reflow Temperature:");
   readButtons(reflowTemp);                                          // Set reflow temperature
+  Serial.println("Reflow Time:");
   readButtons(reflowTime);                                          // Set reflow time
 }
 
 void loop() 
 {
   // FOR DEBUGGING
-  junctionTemp = getJunctionTemp();
-  Serial.println(junctionTemp);
+  setParameters();
   delay(1000);                                                      // Set frequency of measurements and decisions to 1Hz
 }
