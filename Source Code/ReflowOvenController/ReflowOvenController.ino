@@ -2,8 +2,8 @@
 // This documentation describes Open Hardware and is licensed under the CERN OHL v1.2. You may redistribute and modify this documentation under the terms of the CERN OHL v1.2. 
 // This documentation is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR PURPOSE. Please see the CERN OHL v1.2 for applicable conditions.
 
-// Reflow Oven Controller for the Arduino
-// v1.0, Built 10/04/2015
+// Reflow Oven Controller for the Arduino Uno
+// v1.0, Built 12/04/2015
 
 #define thermPin        0                                           // Define thermocouple input pin (A0)
 #define junctionPin     1                                           // Define cold junction input pin (A1)
@@ -40,7 +40,7 @@ void setup()
   Serial.begin(9600);                                               // Initialise serial port at 9600 baud
 }
 
-// Description:		Obtains an analog reading for the cold junction from the LM335 and converts it to a temperature in Celsius 
+// Description:		Obtains an analog reading for the cold junction from the LM35 and converts it to a temperature in Celsius 
 // Parameters:		-
 // Returns:		The cold junction temperature in Celsius
 int getJunctionTemp()
@@ -49,7 +49,7 @@ int getJunctionTemp()
   int junctionTemp = 0;
   
   junctionReading = analogRead(junctionPin);                        // Obtain 10-bit cold junction reading from the ADC
-  junctionTemp = ((junctionReading / 1023) * 5 * 100) - 273;        // Convert reading to temperature in Celsius
+  junctionTemp = ((junctionReading * 5 * 100) / 1023);              // Convert reading to temperature in Celsius
   return junctionTemp;
 }
 
