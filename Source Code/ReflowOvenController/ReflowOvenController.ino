@@ -18,10 +18,19 @@
 #define buzzerPin           9                                       // Define buzzer output pin (D9)
 #define ovenPin             10                                      // Define oven SSR pin (D10)
 
+#define OFF                 0                                       // Define finite state machine states
+#define RAMP_TO_SOAK        1
+#define SOAK                2
+#define RAMP_TO_REFLOW      3
+#define REFLOW              4
+
 #define BUTTON_SPEED        20                                      // Pushbutton delay (ms)
+#define BUZZER_FREQUENCY    5000                                    // Buzzer frequency (Hz)
 #define SOAK_TEMP_OFFSET    15                                      // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET  8                                       // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 #define SAFE_TEMP           60                                      // Safe-to-handle temperature
+
+int state = OFF;
 
 int soakTemp = 150;                                                 // Declare thermal profile parameter variables and initialise to default values
 int soakTime = 60;
@@ -73,12 +82,12 @@ int getThermTemp()
   return thermTemp;
 }
 
-// Description:		Reads the status of the pushbuttons and increments or decrements the current thermal profile parameter accordingly
+// Description:		Reads the status of the pushbuttons and increments or decrements the current thermal profile parameter accordingly until the set button is pressed
 // Parameters:		profileParameter - Thermal profile parameter currently being set
 // Returns:		-
 void readButtons(int profileParameter)
 {
-  while(digitalRead(setButtonPin) == 0)
+  while(digitalRead(setButtonPin) != 0)
   {
     if(digitalRead(incButtonPin) == 0)
     {
@@ -86,33 +95,66 @@ void readButtons(int profileParameter)
     }
     if(digitalRead(decButtonPin) == 0)
     {
-      profileParameter--;                                           // Decrement variable if decrement button is pressed
+      profileParameter--;                                           // Decrement parameter if decrement button is pressed
       
     }
     Serial.print(profileParameter);                                 // Display parameter in serial monitor
-    Serial.print("\r");                                             // Return to start of line
+    Serial.print("\r");                                             // Return to start of line in serial monitor
     delay(BUTTON_SPEED);
   }
 }
 
-// Description:		Allows user to set the four thermal profile parameters using pusbuttons
+// Description:		Allows user to set the four thermal profile parameters using pusbuttons and provides user feedback via the buzzer
 // Parameters:		-
 // Returns:		-
 void setParameters()
 {
   Serial.println("Soak Temperature:");
   readButtons(soakTemp);                                            // Set soak temperature
+  tone(buzzerPin, BUZZER_FREQUENCY, 200);
   Serial.println("Soak Time:");
   readButtons(soakTime);                                            // Set soak time
+  tone(buzzerPin, BUZZER_FREQUENCY, 200);
   Serial.println("Reflow Temperature:");
   readButtons(reflowTemp);                                          // Set reflow temperature
+  tone(buzzerPin, BUZZER_FREQUENCY, 200);
   Serial.println("Reflow Time:");
   readButtons(reflowTime);                                          // Set reflow time
+  tone(buzzerPin, BUZZER_FREQUENCY, 1000);
 }
 
 void loop() 
 {
   // FOR DEBUGGING
   setParameters();
+  
+  switch(state)                                                     // Finite state machine
+  {
+    case OFF:
+    {
+      // Off state code
+      break;
+    }
+    case RAMP_TO_SOAK:
+    {
+      // Ramp to soak state code
+      break;
+    }
+    case SOAK:
+    {
+      // Soak state code
+      break;
+    }
+    case RAMP_TO_REFLOW:
+    {
+      // Ramp to reflow state code
+      break;
+    }
+    case REFLOW:
+    {
+      // Reflow state code
+      break;
+    }
+  }
   delay(1000);                                                      // Set frequency of measurements and decisions to 1Hz
 }
