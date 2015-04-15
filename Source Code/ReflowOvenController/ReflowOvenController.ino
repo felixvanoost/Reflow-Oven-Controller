@@ -67,24 +67,34 @@ int getThermTemp()
   return thermTemp;
 }
 
-// Description:		Increments and decrements the current thermal profile variable according to the status of the pushbuttons
-// Parameters:		parameter - Thermal profile variable currently being set
+// Description:		Reads the status of the pushbuttons and increments or decrements the current thermal profile parameter accordingly
+// Parameters:		profileParameter - Thermal profile parameter currently being set
 // Returns:		-
-void readButtons(int variable)
+void readButtons(int profileParameter)
 {
-  if(digitalRead(incButtonPin) == 0)
+  while(digitalRead(setButtonPin) != 0)
   {
-    variable++;                                                      // Increment variable if increment button is pressed
+    if(digitalRead(incButtonPin) == 0)
+    {
+      profileParameter++;                                           // Increment variable if increment button is pressed
+    }
+    if(digitalRead(decButtonPin) == 0)
+    {
+      profileParameter--;                                           // Decrement variable if decrement button is pressed
+    }
+    delay(BUTTONSPEED);
   }
-  if(digitalRead(decButtonPin) == 0)
-  {
-    variable--;                                                      // Decrement variable if decrement button is pressed
-  }
-  if(digitalRead(setButtonPin) == 0)
-  {
-    return;                                                          // Return once set button is pressed
-  }
-  delay(BUTTONSPEED);
+}
+
+// Description:		Allows user to set the four thermal profile parameters using the pusbuttons
+// Parameters:		-
+// Returns:		-
+void setParameters()
+{
+  readButtons(soakTemp);                                            // Set soak temperature
+  readButtons(soakTime);                                            // Set soak time
+  readButtons(reflowTemp);                                          // Set reflow temperature
+  readButtons(reflowTime);                                          // Set reflow time
 }
 
 void loop() 
