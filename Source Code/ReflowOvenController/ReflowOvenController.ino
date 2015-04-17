@@ -30,18 +30,18 @@
 #define REFLOW_TEMP_OFFSET  8                                       // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 #define SAFE_TEMP           60                                      // Safe-to-handle temperature
 
-int state = OFF;
+char state = OFF;
 
-int soakTemp = 150;                                                 // Declare thermal profile parameter variables and initialise to default values
-int soakTime = 60;
-int reflowTemp = 220;
-int reflowTime = 45;
+char soakTemp = 150;                                                // Declare thermal profile parameter variables and initialise to default values
+char soakTime = 60;
+char reflowTemp = 220;
+char reflowTime = 45;
 
-int thermTemp = 0;                                                  // Declare temperature variables
-int junctionTemp = 0;
+float thermTemp = 0;                                                // Declare temperature variables
+float junctionTemp = 0;
 
 int processTime = 0;                                                // Declare time variables
-int stateTime = 0;
+char stateTime = 0;
 
 void setup() 
 {
@@ -62,24 +62,26 @@ void setup()
 
 // Description:		Obtains an analog reading for the cold junction from the LM35 and converts it to a temperature in Celsius 
 // Parameters:		-
-// Returns:		The cold junction temperature in Celsius
-int getJunctionTemp()
+// Returns:		-
+void getJunctionTemp()
 {
   int junctionReading = 0;
   
+  analogReference(INTERNAL);                                        // Use 1.1V reference for ADC readings (LM35 outputs 0-1V)
   junctionReading = analogRead(junctionPin);                        // Obtain 10-bit cold junction reading from the ADC
-  junctionTemp = ((junctionReading * 5 * 100) / 1023);              // Convert reading to temperature in Celsius
-  return junctionTemp;
+  junctionTemp = ((junctionReading * 1.1 * 100) / 1023);            // Convert reading to temperature in Celsius
+  return;
 }
 
 // Description:		Obtains an analog reading for the thermcouple and converts it to a temperature in Celsius using a LUT
 // Parameters:		-
-// Returns:		The thermocouple temperature in Celsius
-int getThermTemp()
+// Returns:		-
+void getThermTemp()
 {
   int thermReading = 0;
   
-  return thermTemp;
+  analogReference(DEFAULT);                                         // Use default 5V reference for ADC readings
+  return;
 }
 
 // Description:		Reads the status of the pushbuttons and increments or decrements the current thermal profile parameter accordingly until the set button is pressed
@@ -126,7 +128,8 @@ void setParameters()
 void loop() 
 {
   // FOR DEBUGGING
-  setParameters();
+  getJunctionTemp();
+  Serial.println(junctionTemp);
   
   switch(state)                                                     // Finite state machine
   {
