@@ -5,7 +5,7 @@ EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY 
 see the CERN OHL v1.2 for applicable conditions.
 
 # Reflow Oven Controller
-An Arduino-based project to convert a standard toaster oven into a reflow soldering oven for SMT assembly
+An Arduino shield to convert a standard toaster oven into a reflow soldering oven for SMT assembly
 
 ----------
 Context
@@ -21,17 +21,20 @@ Reflow soldering requires precise control of the oven temperature, so the proces
 The specific thermal profile followed by the microcontroller will depend on the type of solder paste and components used on the board. It is split into five main stages - ramp to soak, soak, ramp to reflow, reflow, and cooling. Each section dictates the specific temperature, time, and ramp up / down characteristics required for optimal soldering results. A full reflow cycle usually takes in the region of 3-6 minutes to complete.
 
 ----------
-Functionality
+Overview
 ----------
 
-For this project, an Arduino Uno will be used to control the toaster oven by following a user-defined thermal profile. The following main functional blocks are required:
+For this project, an Arduino will monitor and control the toaster oven to follow a user-defined thermal profile. The required hardware, consisting of the following main functional blocks, will be mounted on an Arduino Proto Shield:
 
-- A solid-state relay to switch the oven on and off.
-- Thermocouple wire to measure the temperature inside the oven.
+- A thermocouple to measure the temperature inside the oven.
 - An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino.
 - A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading.
-- Pushbuttons to enable the user to set the desired thermal profile parameters and start / stop the reflow process.
+- Pushbuttons to allow the user to set the desired thermal profile parameters and start / stop the reflow process.
 - LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete.
+
+One crucial conponent not mentioned above is a solid-state relay, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that an SSR has already been installed in the oven - there are a number of very good tutorials online describing how to do this step-by-step.
+
+The software for this project will be quite simple to make future improvements and modifications for different hardware setups straightforward. A finite state machine will be implemented in C, with a state corresponding to each stage in the reflow thermal profile. To control temperature, the software will simply decide whether to turn the oven on and off (with possible PWM control) in order to reach and maintain the desired temperature at each stage of the reflow process (PID control may be integrated in the future).
 
 ----------
 Components List
