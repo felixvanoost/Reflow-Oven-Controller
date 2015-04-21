@@ -26,11 +26,11 @@ Overview
 
 For this project, an Arduino will monitor and control the toaster oven to follow a user-defined thermal profile. The required hardware, consisting of the following main functional blocks, will be mounted on an Arduino Proto Shield:
 
-- A thermocouple to measure the temperature inside the oven.
-- An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino.
-- A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading.
-- Pushbuttons to allow the user to set the desired thermal profile parameters and start / stop the reflow process.
-- LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete.
+- A thermocouple to measure the temperature inside the oven
+- An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino
+- A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading
+- Pushbuttons to allow the user to set the desired thermal profile parameters and start / stop the reflow process
+- LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete
 
 One crucial conponent not mentioned above is a solid-state relay, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that an SSR has already been installed in the oven - there are a number of very good tutorials online describing how to do this step-by-step.
 
@@ -40,12 +40,14 @@ The software for this project will be kept simple to make future improvements an
 Required Hardware
 ----------
 
-- Arduino Uno or equivalent (I'm using an OSEPP Uno R3 Plus for this project)
+- Arduino Uno or equivalent
 - Arduino Proto Shield or equivalent
 - J- or K-type thermocouple wire (must be rated for at least 300C)
-- Texas Instruments LM35Z Temperature Sensor (very easy to integrate both in software and hardware)
-- Analog Devices OP07 Op-Amp (low input offset voltage characteristics)
-- Intersil ICL7660 DC-DC Converter or equivalent (provides +/-5V output to power the op-amp)
+- Texas Instruments LM35Z Temperature Sensor
+- Analog Devices OP07 Op-Amp or equivalent
+- Intersil ICL7660 Voltage Converter or equivalent (provides +/-5V output to power the op-amp)
+
+The LM35Z is one of the easiest temperature sensors to integrate in both hardware and software, which helps to keep this project simple. The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the ICL7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
 
 ----------
 Required Software
@@ -54,4 +56,4 @@ Required Software
 - Arduino IDE (latest version preferred)
 - Windows HyperTerminal
 
-HyperTerminal is a far more advanced version of the Arduino serial monitor, making it useful for providing user feedback when setting the thermal parameters. The Arduino serial monitor is designed for debugging purposes and lacks many of the features needed to format data logically.
+HyperTerminal is a far more advanced version of the Arduino serial monitor, making it useful for providing user feedback when setting the thermal parameters. The Arduino serial monitor is designed mainly for debugging purposes and thus lacks many of the features needed to present and format data intuitively for user input / feedback purposes.
