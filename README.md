@@ -34,15 +34,24 @@ For this project, an Arduino will monitor and control the toaster oven to follow
 
 One crucial conponent not mentioned above is a solid-state relay, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that an SSR has already been installed in the oven - there are a number of very good tutorials online describing how to do this step-by-step.
 
-The software for this project will be quite simple to make future improvements and modifications for different hardware setups straightforward. A finite state machine will be implemented in C, with a state corresponding to each stage in the reflow thermal profile. To control temperature, the software will simply decide whether to turn the oven on and off (with possible PWM control) in order to reach and maintain the desired temperature at each stage of the reflow process (PID control may be integrated in the future).
+The software for this project will be kept simple to make future improvements and modifications for different hardware setups straightforward. A finite state machine will be implemented in C, with a state corresponding to each stage in the reflow thermal profile. To control temperature, the code will simply decide whether to turn the oven on and off in order to reach and maintain the desired temperature at each stage of the reflow process (PID control may be integrated in the future).
 
 ----------
-Components List
+Required Hardware
 ----------
 
 - Arduino Uno or equivalent (I'm using an OSEPP Uno R3 Plus for this project)
 - Arduino Proto Shield or equivalent
-- J-Type thermocouple wire (must be rated for at least 300C)
+- J- or K-type thermocouple wire (must be rated for at least 300C)
 - Texas Instruments LM35Z Temperature Sensor (very easy to integrate both in software and hardware)
 - Analog Devices OP07 Op-Amp (low input offset voltage characteristics)
 - Intersil ICL7660 DC-DC Converter or equivalent (provides +/-5V output to power the op-amp)
+
+----------
+Required Software
+----------
+
+- Arduino IDE (latest version preferred)
+- Windows HyperTerminal
+
+HyperTerminal is a far more advanced version of the Arduino serial monitor, making it useful for providing user feedback when setting the thermal parameters. The Arduino serial monitor is designed for debugging purposes and lacks many of the features needed to format data logically.
