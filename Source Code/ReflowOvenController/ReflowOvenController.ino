@@ -203,6 +203,7 @@ void loop()
     case OFF:
     {
       TCCR1B = 0;                                                             // Stop Timer 1
+      processTime = 0;                                                        // Reset process time
       digitalWrite(LED1Pin, 1);                                               // Turn off LEDs
       digitalWrite(LED2Pin, 1);
       digitalWrite(LED3Pin, 1);
@@ -213,13 +214,14 @@ void loop()
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
      
-      tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);                            // Play start process melody
+      tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);                            // Play melody
       delay(SHORT_BEEP);
       tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
       delay(SHORT_BEEP);
       tone(buzzerPin, HIGH_BUZZER_FREQ, LONG_BEEP);
      
       initialiseTimer1();
+      stateTime = 0;                                                          // Reset state time
       state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
       break;
     }
@@ -228,6 +230,11 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        state = OFF;
+        break;
+      }
+      if(stateTime == 30 && ovenTemp < 50)                                    // Stop reflow process if oven does not reach 50C in the first 30s (thermocouple error)
+      {
         state = OFF;
         break;
       }
@@ -241,16 +248,37 @@ void loop()
     }
     case SOAK:
     {
+      if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
+      {
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        state = OFF;
+        break;
+      }
+      
       // Soak state code
       break;
     }
     case RAMP_TO_REFLOW:
     {
-      // Ramp to reflow state code0
+      if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
+      {
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        state = OFF;
+        break;
+      }
+      
+      // Ramp to reflow state code
       break;
     }
     case REFLOW:
     {
+      if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
+      {
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        state = OFF;
+        break;
+      }
+      
       // Reflow state code
       break;
     }
