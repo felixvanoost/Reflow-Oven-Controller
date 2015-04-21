@@ -52,9 +52,10 @@ unsigned char reflowTime = 45;
 
 float thermTemp = 0;                                                          // Declare temperature variables
 float junctionTemp = 0;
+float ovenTemp = 0;
 
-unsigned int processTime = 0;                                                 // Declare time variables
-unsigned char stateTime = 0;
+volatile unsigned int processTime = 0;                                        // Declare time variables
+volatile unsigned char stateTime = 0;
 
 void setup() 
 {
@@ -73,7 +74,7 @@ void setup()
   digitalWrite(LED1Pin, 1);                                                   // Turn off LEDs
   digitalWrite(LED2Pin, 1); 
   digitalWrite(LED3Pin, 1); 
-  digitalWrite(LED4Pin, 1); 
+  digitalWrite(LED4Pin, 1);
   
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
   
@@ -104,6 +105,35 @@ void getThermTemp()
   return;
 }
 
+// Description:		Interrupt Service Routine for Timer 1
+//                   1. Increments the total process time and state time every second
+//                   2. Obtains temperature readings for the thermocouple and cold junction and calculates the current oven temperature
+//                   3. Displays the current oven temperature in the serial monitor
+ISR(TIMER1_OVF_vect)
+{
+  processTime++;                                                              // Increment total process and state time
+  stateTime++;
+  
+  getThermTemp();                                                             // Obtain temperature readings for the thermocouple and cold junction
+  getJunctionTemp();
+  ovenTemp = thermTemp + junctionTemp;                                        // Calculate current oven temperature
+  Serial.println(ovenTemp);                                                   // Display current oven temperature
+}
+
+// Description:		Initialises Timer 1 to interrupt every second
+// Parameters:		-
+// Returns:		-
+void initialiseTimer1()
+{
+  cli();                                                                        // Disable global interrupts
+  TCCR1A = 0;                                                                   // Reset Timer 1 registers
+  TCCR1B = 0;
+  TIMSK1 |= (1 << TOIE1);                                                       // Enable Timer 1 overflow interrupt
+  TCNT1 = 0x0BDB;                                                               // Preload Timer 1 with 3035 to overflow at 1Hz
+  TCCR1B |= (1 << CS12);                                                        // Select clock source as internal 12MHz oscillator with CLK / 256 prescaling and start Timer 1
+  sei();                                                                        // Enable global interrupts
+}
+
 // Description:		Reads the status of the pushbuttons and increments or decrements the given initial value within the specified minimum and maximum ranges until the set button is pressed
 // Parameters:		value - Initial value of the thermal profile parameter currently being set
 //                      minimum - Minimum acceptable value for specified parameter
@@ -125,6 +155,7 @@ int readButtons(int value, int minimum, int maximum)
     Serial.print("\r");                                                       // Return to start of line in serial monitor
     delay(BUTTON_DELAY);
   }
+  
   while(digitalRead(setButtonPin) == 0);                                      // Wait for set button to be released
   return value;
 }
@@ -139,18 +170,22 @@ void setParameters()
   soakTemp = readButtons(soakTemp, MIN_SOAK_TEMP, MAX_SOAK_TEMP);             // Set soak temperature
   Serial.println(soakTemp);                                                   // Display entered soak temperature
   tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+
   Serial.println("Soak Time:");
   soakTime = readButtons(soakTime, MIN_SOAK_TIME, MAX_SOAK_TIME);             // Set soak time
   Serial.println(soakTime);                                                   // Display entered soak time
   tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+
   Serial.println("Reflow Temperature:");
   reflowTemp = readButtons(reflowTemp, MIN_REFLOW_TEMP, MAX_REFLOW_TEMP);     // Set reflow temperature
   Serial.println(reflowTemp);                                                 // Display entered reflow temperature
   tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+
   Serial.println("Reflow Time:");
   reflowTime = readButtons(reflowTime, MIN_REFLOW_TIME, MAX_REFLOW_TIME);     // Set reflow time
   Serial.println(reflowTime);                                                 // Display entered reflow time
   tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+
   return;
 }
 
@@ -160,18 +195,26 @@ void loop()
   {
     case OFF:
     {
+      TCCR1B = 0;                                                             // Stop Timer 1
+      digitalWrite(LED1Pin, 1);                                               // Turn off LEDs
+      digitalWrite(LED2Pin, 1);
+      digitalWrite(LED3Pin, 1);
+      digitalWrite(LED4Pin, 1);
+      digitalWrite(ovenPin, 0);                                               // Turn off oven
+      
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
+      initialiseTimer1();
       state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
       break;
     }
     case RAMP_TO_SOAK:
-    {
+    { 
       // FOR DEBUGGING
-      tone(buzzerPin, BUZZER_FREQUENCY, LONG_BEEP);
       digitalWrite(LED1Pin, 0);
       digitalWrite(LED2Pin, 0);
       digitalWrite(LED3Pin, 0);
       digitalWrite(LED4Pin, 0);
+      tone(buzzerPin, BUZZER_FREQUENCY, LONG_BEEP);
       break;
     }
     case SOAK:
@@ -190,5 +233,4 @@ void loop()
       break;
     }
   }
-  delay(1000);                                                                // Set frequency of measurements and decisions to 1Hz
 }
