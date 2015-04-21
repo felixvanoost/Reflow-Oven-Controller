@@ -5,35 +5,39 @@
 // Reflow Oven Controller for the Arduino Uno
 // v1.0, Built 20/04/2015
 
-#define thermPin            0                                                 // Define thermocouple input pin (A0)
-#define junctionPin         1                                                 // Define cold junction input pin (A1)
+#define thermPin            0                                                 // Thermocouple input pin (A0)
+#define junctionPin         1                                                 // Cold junction input pin (A1)
 
-#define setButtonPin        2                                                 // Define pushbutton input pins (D2-D4)
+#define setButtonPin        2                                                 // Pushbutton input pins (D2-D4)
 #define incButtonPin        3
 #define decButtonPin        4
-#define LED1Pin             5                                                 // Define LED output pins (D5-D8)
+#define LED1Pin             5                                                 // LED output pins (D5-D8)
 #define LED2Pin             6
 #define LED3Pin             7
 #define LED4Pin             8
-#define buzzerPin           9                                                 // Define buzzer output pin (D9)
-#define ovenPin             10                                                // Define oven SSR pin (D10)
+#define buzzerPin           9                                                 // Buzzer output pin (D9)
+#define ovenPin             10                                                // Oven SSR pin (D10)
 
-#define BUTTON_DELAY        120                                               // Pushbutton delay (ms)
-#define BUZZER_FREQUENCY    5000                                              // Buzzer frequency (Hz)
+#define BUTTON_DELAY        120                                               // Pushbutton delay for increment / decrement (ms)
+#define DEBOUNCE_DELAY      50                                                // Pushbutton debounce delay (ms)
+
+#define LOW_BUZZER_FREQ     3000                                              // Buzzer frequencies (Hz)
+#define MID_BUZZER_FREQ     4000
+#define HIGH_BUZZER_FREQ    5000
 #define SHORT_BEEP          100                                               // Short beep length (ms)
 #define LONG_BEEP           400                                               // Long beep length (ms)
 
-#define MIN_SOAK_TEMP       120                                               // Define minimum values for thermal profile parameters
+#define MIN_SOAK_TEMP       120                                               // Minimum values for thermal profile parameters
 #define MIN_SOAK_TIME       30
 #define MIN_REFLOW_TEMP     200
 #define MIN_REFLOW_TIME     15
 
-#define MAX_SOAK_TEMP       180                                               // Define maximum values for thermal profile parameters
+#define MAX_SOAK_TEMP       180                                               // Maximum values for thermal profile parameters
 #define MAX_SOAK_TIME       90
 #define MAX_REFLOW_TEMP     240
 #define MAX_REFLOW_TIME     60
 
-#define OFF                 0                                                 // Define finite state machine states
+#define OFF                 0                                                 // Finite state machine states
 #define RAMP_TO_SOAK        1
 #define SOAK                2
 #define RAMP_TO_REFLOW      3
@@ -79,6 +83,8 @@ void setup()
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
   
   setParameters();
+  Serial.println("");
+  Serial.println("Press 'set' to begin reflow process");
 }
 
 // Description:		Obtains an analog reading for the cold junction from the LM35 and converts it to a temperature in Celsius 
@@ -157,6 +163,7 @@ int readButtons(int value, int minimum, int maximum)
   }
   
   while(digitalRead(setButtonPin) == 0);                                      // Wait for set button to be released
+  delay(DEBOUNCE_DELAY);
   return value;
 }
 
@@ -169,22 +176,22 @@ void setParameters()
   Serial.println("Soak Temperature:");
   soakTemp = readButtons(soakTemp, MIN_SOAK_TEMP, MAX_SOAK_TEMP);             // Set soak temperature
   Serial.println(soakTemp);                                                   // Display entered soak temperature
-  tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
 
   Serial.println("Soak Time:");
   soakTime = readButtons(soakTime, MIN_SOAK_TIME, MAX_SOAK_TIME);             // Set soak time
   Serial.println(soakTime);                                                   // Display entered soak time
-  tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
 
   Serial.println("Reflow Temperature:");
   reflowTemp = readButtons(reflowTemp, MIN_REFLOW_TEMP, MAX_REFLOW_TEMP);     // Set reflow temperature
   Serial.println(reflowTemp);                                                 // Display entered reflow temperature
-  tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
 
   Serial.println("Reflow Time:");
   reflowTime = readButtons(reflowTime, MIN_REFLOW_TIME, MAX_REFLOW_TIME);     // Set reflow time
   Serial.println(reflowTime);                                                 // Display entered reflow time
-  tone(buzzerPin, BUZZER_FREQUENCY, SHORT_BEEP);
+  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
 
   return;
 }
@@ -203,18 +210,33 @@ void loop()
       digitalWrite(ovenPin, 0);                                               // Turn off oven
       
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
+      while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
+      delay(DEBOUNCE_DELAY);
+     
+      tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);                            // Play start process melody
+      delay(SHORT_BEEP);
+      tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+      delay(SHORT_BEEP);
+      tone(buzzerPin, HIGH_BUZZER_FREQ, LONG_BEEP);
+     
       initialiseTimer1();
       state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
       break;
     }
     case RAMP_TO_SOAK:
     { 
+      if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
+      {
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        state = OFF;
+        break;
+      }
+      
       // FOR DEBUGGING
       digitalWrite(LED1Pin, 0);
       digitalWrite(LED2Pin, 0);
       digitalWrite(LED3Pin, 0);
       digitalWrite(LED4Pin, 0);
-      tone(buzzerPin, BUZZER_FREQUENCY, LONG_BEEP);
       break;
     }
     case SOAK:
@@ -224,7 +246,7 @@ void loop()
     }
     case RAMP_TO_REFLOW:
     {
-      // Ramp to reflow state code
+      // Ramp to reflow state code0
       break;
     }
     case REFLOW:
