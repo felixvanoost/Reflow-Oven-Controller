@@ -45,21 +45,51 @@
 
 #define SOAK_TEMP_OFFSET    15                                                // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET  8                                                 // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
+
+#define ERROR_TEMP          50                                                // Thermocouple error temperature threshold (stops reflow process if specified temperature is not reached within the first 30 seconds)
 #define SAFE_TEMP           60                                                // Safe-to-handle temperature
 
-unsigned char state = OFF;
+byte state = OFF;
 
-unsigned char soakTemp = 150;                                                 // Declare thermal profile parameter variables and initialise to default values
-unsigned char soakTime = 60;
-unsigned char reflowTemp = 220;
-unsigned char reflowTime = 45;
+byte soakTemp = 150;                                                          // Declare thermal profile parameter variables and initialise to default values
+byte soakTime = 60;
+byte reflowTemp = 220;
+byte reflowTime = 45;
 
 float thermTemp = 0;                                                          // Declare temperature variables
 float junctionTemp = 0;
 float ovenTemp = 0;
 
 volatile unsigned int processTime = 0;                                        // Declare time variables
-volatile unsigned char stateTime = 0;
+volatile byte stateTime = 0;
+
+// 0-255C LUT for K-type thermocouple (stored in program memory)
+const int ThermLUT[] PROGMEM = {0, 18, 37, 56, 74, 93, 112, 130, 149, 168,
+                                187, 205, 224, 243, 262, 281, 299, 318, 337, 356,
+                                375, 394, 413, 432, 451, 470, 489, 508, 527, 547,
+                                565, 585, 604, 623, 642, 661, 681, 700, 719, 738,
+                                758, 777, 796, 815, 835, 854, 873, 893, 912, 932,
+                                951, 970, 990, 1009, 1028, 1048, 1067, 1087, 1106, 1126,
+                                1145, 1165, 1184, 1204, 1223, 1243, 1262, 1282, 1301, 1321,
+                                1340, 1360, 1379, 1399, 1418, 1438, 1457, 1477, 1496, 1516,
+                                1535, 1555, 1575, 1594, 1614, 1633, 1653, 1672, 1692, 1711,
+                                1731, 1750, 1770, 1789, 1809, 1828, 1848, 1867, 1886, 1906,
+                                1925, 1945, 1964, 1983, 2003, 2022, 2042, 2061, 2081, 2100,
+                                2119, 2139, 2158, 2178, 2197, 2216, 2235, 2255, 2274, 2293,
+                                2312, 2332, 2351, 2370, 2389, 2408, 2428, 2447, 2466, 2485,
+                                2504, 2523, 2543, 2562, 2581, 2600, 2619, 2638, 2657, 2676,
+                                2695, 2714, 2733, 2752, 2771, 2790, 2809, 2828, 2847, 2866,
+                                2885, 2904, 2923, 2942, 2961, 2979, 2999, 3017, 3036, 3055,
+                                3074, 3093, 3111, 3130, 3149, 3168, 3187, 3206, 3225, 3243,
+                                3262, 3281, 3300, 3318, 3337, 3356, 3375, 3393, 3412, 3431,
+                                3450, 3469, 3487, 3506, 3525, 3544, 3562, 3581, 3600, 3619,
+                                3637, 3656, 3675, 3694, 3713, 3731, 3750, 3769, 3788, 3807,
+                                3825, 3844, 3862, 3881, 3900, 3919, 3938, 3956, 3975, 3995,
+                                4013, 4032, 4051, 4070, 4089, 4107, 4126, 4145, 4164, 4183,
+                                4202, 4221, 4239, 4259, 4277, 4296, 4315, 4334, 4353, 4372,
+                                4391, 4410, 4429, 4448, 4467, 4486, 4505, 4524, 4543, 4562,
+                                4581, 4600, 4619, 4638, 4657, 4677, 4696, 4715, 4734, 4753,
+                                4772, 4791, 4810, 4830, 4849, 4868};
 
 void setup() 
 {
@@ -106,8 +136,18 @@ void getJunctionTemp()
 void getThermTemp()
 {
   int thermReading = 0;
+  int i = 0;
   
   analogReference(DEFAULT);                                                   // Use default 5V reference for ADC readings
+  thermReading = analogRead(thermPin);                                        // Obtain 10-bit thermocouple reading from the ADC
+  thermReading = ((thermReading * 5 * 1000) / 1023);                          // Convert reading to a voltage (in mV)
+  
+  while(thermReading < ThermLUT[i])
+  {
+    i++;
+  }
+  thermTemp = i;
+  
   return;
 }
 
