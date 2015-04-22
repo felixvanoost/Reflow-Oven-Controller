@@ -42,12 +42,12 @@ Required Hardware
 
 - Arduino Uno or equivalent
 - Arduino Proto Shield or equivalent
-- J- or K-type thermocouple wire (must be rated for at least 300C)
+- K-type thermocouple wire (must be rated for at least 300C)
 - Texas Instruments LM35Z Temperature Sensor
 - Analog Devices OP07 Op-Amp or equivalent
-- Intersil ICL7660 Voltage Converter or equivalent (provides +/-5V output to power the op-amp)
+- Texas Instruments LMC7660 Voltage Converter or equivalent (provides +/-5V output to power the op-amp)
 
-The LM35Z is one of the easiest temperature sensors to integrate in both hardware and software, which helps to keep this project simple. The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the ICL7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
+The LM35Z is one of the easiest temperature sensors to integrate in both hardware and software, which helps to keep this project simple. The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the LMC7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
 
 ----------
 Required Software
