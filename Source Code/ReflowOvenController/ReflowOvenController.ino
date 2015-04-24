@@ -3,7 +3,6 @@
 // This documentation is distributed WITHOUT ANY EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY AND FITNESS FOR A PARTICULAR PURPOSE. Please see the CERN OHL v1.2 for applicable conditions.
 
 // Reflow Oven Controller for the Arduino Uno
-// v1.0, Built 20/04/2015
 
 #define thermPin            0                                                 // Thermocouple input pin (A0)
 #define junctionPin         1                                                 // Cold junction input pin (A1)
