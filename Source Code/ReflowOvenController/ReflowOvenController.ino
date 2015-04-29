@@ -4,6 +4,8 @@
 
 // Reflow Oven Controller for the Arduino Uno
 
+#include <avr/pgmspace.h>
+
 #define thermPin            A0                                                // Thermocouple input pin (A0)
 #define junctionPin         A1                                                // Cold junction input pin (A1)
 
@@ -61,7 +63,7 @@ volatile unsigned int processTime = 0;                                        //
 volatile byte stateTime = 0;
 
 // 0-255C LUT for K-type thermocouple (stored in program memory)
-int thermLUT[] =               {0,    18,   37,   56,   74,   93,   112,  130,  149,  168,
+const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  149,  168,
                                 187,  205,  224,  243,  262,  281,  299,  318,  337,  356,
                                 375,  394,  413,  432,  451,  470,  489,  508,  527,  547,
                                 565,  585,  604,  623,  642,  661,  681,  700,  719,  738,
@@ -136,7 +138,7 @@ void getThermTemp()
   thermReading = analogRead(thermPin);                                        // Obtain 10-bit thermocouple reading from the ADC
   thermReading = ((thermReading * 5 * 1000) / 1023);                          // Convert reading to a voltage (in mV)
   
-  while(int(thermReading) > thermLUT[i])
+  while(int(thermReading) > pgm_read_word_near(thermLUT + i))
   {
     i++;
   }
