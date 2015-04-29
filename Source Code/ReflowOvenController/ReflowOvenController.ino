@@ -12,8 +12,8 @@
 #define setButtonPin        2                                                 // Pushbutton input pins (D2-D4)
 #define incButtonPin        3
 #define decButtonPin        4
-#define buzzerPin           5                                                 // Buzzer output pin (D5)
-#define ovenPin             6                                                 // Oven SSR pin (D6)
+#define ovenPin             5                                                 // Oven SSR pin (D5)
+#define buzzerPin           6                                                 // Buzzer output pin (D6)
 #define LED1Pin             7                                                 // LED output pins (D7-D8)
 #define LED2Pin             8
 
@@ -106,10 +106,6 @@ void setup()
   digitalWrite(LED2Pin, 0); 
   
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
-  
-  setParameters();
-  Serial.println();
-  Serial.println("Press 'set' to begin reflow process");
 }
 
 // Description:		Obtains an analog reading for the cold junction from the LM35 and converts it to a temperature in Celsius 
@@ -117,11 +113,11 @@ void setup()
 // Returns:		-
 void getJunctionTemp()
 {
-  unsigned int junctionReading = 0;
+  double junctionReading = 0;
   
-  analogReference(INTERNAL);                                                  // Use 1.1V reference for ADC readings (LM35 outputs 0-1V)
   junctionReading = analogRead(junctionPin);                                  // Obtain 10-bit cold junction reading from the ADC
-  junctionTemp = ((junctionReading * 1.1 * 100) / 1023);                      // Convert reading to temperature in Celsius
+  junctionReading = ((junctionReading * 5.0 * 100.0) / 1023.0);               // Convert reading to temperature in Celsius
+  junctionTemp = byte(junctionReading);   
   
   return;
 }
@@ -134,9 +130,8 @@ void getThermTemp()
   double thermReading = 0;
   byte i = 0;
   
-  analogReference(DEFAULT);                                                   // Use default 5V reference for ADC readings
   thermReading = analogRead(thermPin);                                        // Obtain 10-bit thermocouple reading from the ADC
-  thermReading = ((thermReading * 5 * 1000) / 1023);                          // Convert reading to a voltage (in mV)
+  thermReading = ((thermReading * 5.0 * 1000.0) / 1023.0);                    // Convert reading to a voltage (in mV)
   
   while(int(thermReading) > pgm_read_word_near(thermLUT + i))
   {
@@ -157,7 +152,7 @@ ISR(TIMER1_OVF_vect)
   stateTime++;
   
   getThermTemp();                                                             // Obtain temperature readings for the thermocouple and cold junction
-  //getJunctionTemp();
+  getJunctionTemp();
   ovenTemp = thermTemp + junctionTemp;                                        // Calculate current oven temperature
   Serial.println(ovenTemp);                                                   // Display current oven temperature
 }
@@ -229,6 +224,9 @@ void setParameters()
   reflowTime = readButtons(reflowTime, MIN_REFLOW_TIME, MAX_REFLOW_TIME);     // Set reflow time
   Serial.println(reflowTime);                                                 // Display entered reflow time
   tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
+  
+  Serial.println();
+  Serial.println("Press 'set' to begin reflow process");
 
   return;
 }
@@ -237,6 +235,7 @@ void loop()
 {
   switch(state)                                                               // Finite state machine
   {
+    // Idle state
     case OFF:
     {
       TCCR1B = 0;                                                             // Stop Timer 1
@@ -244,8 +243,8 @@ void loop()
       digitalWrite(ovenPin, 0);                                               // Turn off oven
       digitalWrite(LED1Pin, 0);                                               // Turn off LEDs
       digitalWrite(LED2Pin, 0);
+      setParameters();
       
-      // Enter Ramp to Soak state
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
@@ -261,8 +260,12 @@ void loop()
       state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
       break;
     }
+    // Ramp to soak state
     case RAMP_TO_SOAK:
     { 
+      analogWrite(ovenPin, 255);                                              // Set oven duty cycle to 100%
+      digitalWrite(LED2Pin, 1);
+      
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
@@ -274,46 +277,76 @@ void loop()
         state = OFF;
         break;
       }
-      
-      // FOR DEBUGGING
-      digitalWrite(LED1Pin, 1);
-      digitalWrite(LED2Pin, 1);
+      if(ovenTemp > soakTemp - SOAK_TEMP_OFFSET)                              // Enter soak state once soak time has elapsed
+      {
+        stateTime = 0;                                                        // Reset state time
+        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        state = SOAK;                                                         // Enter soak state
+      }
       break;
     }
+    // Soak state
     case SOAK:
     {
+      digitalWrite(ovenPin, 0);                                               // Turn off oven
+      digitalWrite(LED2Pin, 0);
+      
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         state = OFF;
         break;
       }
-      
-      // Soak state code
+      if(stateTime == soakTime)
+      {
+        stateTime = 0;                                                        // Reset state time
+        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        state = RAMP_TO_REFLOW;                                               // Enter ramp to reflow state
+      }
       break;
     }
+    // Ramp to reflow state
     case RAMP_TO_REFLOW:
     {
+      analogWrite(ovenPin, 255);                                              // Set oven duty cycle to 100%
+      digitalWrite(LED2Pin, 1);
+      
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         state = OFF;
         break;
       }
-      
-      // Ramp to reflow state code
+      if(ovenTemp > reflowTemp - REFLOW_TEMP_OFFSET)
+      {
+        stateTime = 0;                                                        // Reset state time
+        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        state = REFLOW;                                                       // Enter reflow state
+      }
       break;
     }
+    // Reflow state
     case REFLOW:
     {
+      digitalWrite(ovenPin, 0);
+      digitalWrite(LED2Pin, 0);
+      
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         state = OFF;
         break;
       }
-      
-      // Reflow state code
+      if(stateTime == reflowTime)
+      {
+        stateTime = 0;                                                        // Reset state time
+        TCCR1B = 0;                                                           // Stop Timer 1
+        Serial.println("Reflow process complete");
+        Serial.print("Total reflow time:");
+        Serial.print(processTime);
+        delay(5000);
+        state = OFF;                                                          // Return to idle state
+      }
       break;
     }
   }
