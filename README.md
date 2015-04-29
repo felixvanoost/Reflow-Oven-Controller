@@ -46,8 +46,20 @@ Required Hardware
 - Texas Instruments LM35Z Temperature Sensor
 - Analog Devices OP07 Op-Amp or equivalent
 - Texas Instruments LMC7660 Voltage Converter or equivalent (provides +/-5V output to power the op-amp)
+- Buzzer (this project uses a TDK PS1420P02CT)
+- 4-Position screw terminal block
+- 2x 8-DIP sockets
+- 3x Pushbuttons
+- 2x 5mm LEDs
+- 2x 10uF capacitors
+- 2x 100Ω resistors
+- 2x 330Ω resistors
+- 3x 10kΩ resistors
+- 2x 47kΩ resistors
 
-The LM35Z is one of the easiest temperature sensors to integrate in both hardware and software, which helps to keep this project simple. The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the LMC7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
+The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the LMC7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
+
+I am using an [OSEPP Proto Shield](http://osepp.com/products/shield-arduino-compatible/proto-shield/) for this project (functionally identical to the [Sparkfun ProtoShield Kit](https://www.sparkfun.com/products/7914)), which comes pre-installed with a pushbutton and two LEDs. This reduces the number of components that need to be soldered to the board and simplifies the layout and assembly process.
 
 ----------
 Required Software
