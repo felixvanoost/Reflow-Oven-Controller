@@ -4,18 +4,16 @@
 
 // Reflow Oven Controller for the Arduino Uno
 
-#define thermPin            0                                                 // Thermocouple input pin (A0)
-#define junctionPin         1                                                 // Cold junction input pin (A1)
+#define thermPin            A0                                                // Thermocouple input pin (A0)
+#define junctionPin         A1                                                // Cold junction input pin (A1)
 
 #define setButtonPin        2                                                 // Pushbutton input pins (D2-D4)
 #define incButtonPin        3
 #define decButtonPin        4
-#define LED1Pin             5                                                 // LED output pins (D5-D8)
-#define LED2Pin             6
-#define LED3Pin             7
-#define LED4Pin             8
-#define buzzerPin           9                                                 // Buzzer output pin (D9)
-#define ovenPin             10                                                // Oven SSR pin (D10)
+#define buzzerPin           5                                                 // Buzzer output pin (D5)
+#define ovenPin             6                                                 // Oven SSR pin (D6)
+#define LED1Pin             7                                                 // LED output pins (D7-D8)
+#define LED2Pin             8
 
 #define BUTTON_DELAY        120                                               // Pushbutton delay for increment / decrement (ms)
 #define DEBOUNCE_DELAY      50                                                // Pushbutton debounce delay (ms)
@@ -55,20 +53,20 @@ byte soakTime = 60;
 byte reflowTemp = 220;
 byte reflowTime = 45;
 
-float thermTemp = 0;                                                          // Declare temperature variables
-float junctionTemp = 0;
-float ovenTemp = 0;
+byte thermTemp = 0;                                                           // Declare temperature variables
+byte junctionTemp = 0;
+byte ovenTemp = 0;
 
 volatile unsigned int processTime = 0;                                        // Declare time variables
 volatile byte stateTime = 0;
 
 // 0-255C LUT for K-type thermocouple (stored in program memory)
-const int ThermLUT[] PROGMEM = {0, 18, 37, 56, 74, 93, 112, 130, 149, 168,
-                                187, 205, 224, 243, 262, 281, 299, 318, 337, 356,
-                                375, 394, 413, 432, 451, 470, 489, 508, 527, 547,
-                                565, 585, 604, 623, 642, 661, 681, 700, 719, 738,
-                                758, 777, 796, 815, 835, 854, 873, 893, 912, 932,
-                                951, 970, 990, 1009, 1028, 1048, 1067, 1087, 1106, 1126,
+int thermLUT[] =               {0,    18,   37,   56,   74,   93,   112,  130,  149,  168,
+                                187,  205,  224,  243,  262,  281,  299,  318,  337,  356,
+                                375,  394,  413,  432,  451,  470,  489,  508,  527,  547,
+                                565,  585,  604,  623,  642,  661,  681,  700,  719,  738,
+                                758,  777,  796,  815,  835,  854,  873,  893,  912,  932,
+                                951,  970,  990,  1009, 1028, 1048, 1067, 1087, 1106, 1126,
                                 1145, 1165, 1184, 1204, 1223, 1243, 1262, 1282, 1301, 1321,
                                 1340, 1360, 1379, 1399, 1418, 1438, 1457, 1477, 1496, 1516,
                                 1535, 1555, 1575, 1594, 1614, 1633, 1653, 1672, 1692, 1711,
@@ -97,22 +95,18 @@ void setup()
   pinMode(setButtonPin, INPUT);
   pinMode(incButtonPin, INPUT);
   pinMode(decButtonPin, INPUT);
-  pinMode(LED1Pin, OUTPUT);
-  pinMode(LED2Pin, OUTPUT);
-  pinMode(LED3Pin, OUTPUT);
-  pinMode(LED4Pin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
   pinMode(ovenPin, OUTPUT);
+  pinMode(LED1Pin, OUTPUT);
+  pinMode(LED2Pin, OUTPUT);
   
-  digitalWrite(LED1Pin, 1);                                                   // Turn off LEDs
-  digitalWrite(LED2Pin, 1); 
-  digitalWrite(LED3Pin, 1); 
-  digitalWrite(LED4Pin, 1);
+  digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
+  digitalWrite(LED2Pin, 0); 
   
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
   
   setParameters();
-  Serial.println("");
+  Serial.println();
   Serial.println("Press 'set' to begin reflow process");
 }
 
@@ -121,11 +115,12 @@ void setup()
 // Returns:		-
 void getJunctionTemp()
 {
-  int junctionReading = 0;
+  unsigned int junctionReading = 0;
   
   analogReference(INTERNAL);                                                  // Use 1.1V reference for ADC readings (LM35 outputs 0-1V)
   junctionReading = analogRead(junctionPin);                                  // Obtain 10-bit cold junction reading from the ADC
   junctionTemp = ((junctionReading * 1.1 * 100) / 1023);                      // Convert reading to temperature in Celsius
+  
   return;
 }
 
@@ -134,14 +129,14 @@ void getJunctionTemp()
 // Returns:		-
 void getThermTemp()
 {
-  int thermReading = 0;
-  int i = 0;
+  double thermReading = 0;
+  byte i = 0;
   
   analogReference(DEFAULT);                                                   // Use default 5V reference for ADC readings
   thermReading = analogRead(thermPin);                                        // Obtain 10-bit thermocouple reading from the ADC
   thermReading = ((thermReading * 5 * 1000) / 1023);                          // Convert reading to a voltage (in mV)
   
-  while(thermReading < ThermLUT[i])
+  while(int(thermReading) > thermLUT[i])
   {
     i++;
   }
@@ -151,16 +146,16 @@ void getThermTemp()
 }
 
 // Description:		Interrupt Service Routine for Timer 1
-//                   1. Increments the total process time and state time every second
-//                   2. Obtains temperature readings for the thermocouple and cold junction and calculates the current oven temperature
-//                   3. Displays the current oven temperature in the serial monitor
+//                      1. Increments the total process time and state time every second
+//                      2. Obtains temperature readings for the thermocouple and cold junction and calculates the current oven temperature
+//                      3. Displays the current oven temperature in the serial monitor
 ISR(TIMER1_OVF_vect)
 {
   processTime++;                                                              // Increment total process and state time
   stateTime++;
   
   getThermTemp();                                                             // Obtain temperature readings for the thermocouple and cold junction
-  getJunctionTemp();
+  //getJunctionTemp();
   ovenTemp = thermTemp + junctionTemp;                                        // Calculate current oven temperature
   Serial.println(ovenTemp);                                                   // Display current oven temperature
 }
@@ -170,13 +165,13 @@ ISR(TIMER1_OVF_vect)
 // Returns:		-
 void initialiseTimer1()
 {
-  cli();                                                                        // Disable global interrupts
-  TCCR1A = 0;                                                                   // Reset Timer 1 registers
+  cli();                                                                      // Disable global interrupts
+  TCCR1A = 0;                                                                 // Reset Timer 1 registers
   TCCR1B = 0;
-  TIMSK1 |= (1 << TOIE1);                                                       // Enable Timer 1 overflow interrupt
-  TCNT1 = 0x0BDB;                                                               // Preload Timer 1 with 3035 to overflow at 1Hz
-  TCCR1B |= (1 << CS12);                                                        // Select clock source as internal 12MHz oscillator with CLK / 256 prescaling and start Timer 1
-  sei();                                                                        // Enable global interrupts
+  TIMSK1 |= (1 << TOIE1);                                                     // Enable Timer 1 overflow interrupt
+  TCNT1 = 0x0BDB;                                                             // Preload Timer 1 with 3035 to overflow at 1Hz
+  TCCR1B |= (1 << CS12);                                                      // Select clock source as internal 12MHz oscillator with CLK / 256 prescaling and start Timer 1
+  sei();                                                                      // Enable global interrupts
 }
 
 // Description:		Reads the status of the pushbuttons and increments or decrements the given initial value within the specified minimum and maximum ranges until the set button is pressed
@@ -203,6 +198,7 @@ int readButtons(int value, int minimum, int maximum)
   
   while(digitalRead(setButtonPin) == 0);                                      // Wait for set button to be released
   delay(DEBOUNCE_DELAY);
+  
   return value;
 }
 
@@ -243,12 +239,11 @@ void loop()
     {
       TCCR1B = 0;                                                             // Stop Timer 1
       processTime = 0;                                                        // Reset process time
-      digitalWrite(LED1Pin, 1);                                               // Turn off LEDs
-      digitalWrite(LED2Pin, 1);
-      digitalWrite(LED3Pin, 1);
-      digitalWrite(LED4Pin, 1);
       digitalWrite(ovenPin, 0);                                               // Turn off oven
+      digitalWrite(LED1Pin, 0);                                               // Turn off LEDs
+      digitalWrite(LED2Pin, 0);
       
+      // Enter Ramp to Soak state
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
@@ -279,10 +274,8 @@ void loop()
       }
       
       // FOR DEBUGGING
-      digitalWrite(LED1Pin, 0);
-      digitalWrite(LED2Pin, 0);
-      digitalWrite(LED3Pin, 0);
-      digitalWrite(LED4Pin, 0);
+      digitalWrite(LED1Pin, 1);
+      digitalWrite(LED2Pin, 1);
       break;
     }
     case SOAK:
