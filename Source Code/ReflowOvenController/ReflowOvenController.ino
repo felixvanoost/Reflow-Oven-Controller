@@ -41,12 +41,13 @@
 #define SOAK                2
 #define RAMP_TO_REFLOW      3
 #define REFLOW              4
+#define COOLING             5
 
 #define SOAK_TEMP_OFFSET    15                                                // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET  8                                                 // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 
 #define ERROR_TEMP          50                                                // Thermocouple error temperature threshold (stops reflow process if specified temperature is not reached within the first 30 seconds)
-#define SAFE_TEMP           60                                                // Safe-to-handle temperature
+#define SAFE_TO_HANDLE_TEMP 60                                                // Safe to handle temperature
 
 byte state = OFF;
 
@@ -248,8 +249,9 @@ void loop()
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
-     
-      tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);                            // Play melody
+      Serial.println("Starting reflow process");
+
+      tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);                            // Play start melody
       delay(SHORT_BEEP);
       tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
       delay(SHORT_BEEP);
@@ -328,7 +330,7 @@ void loop()
     // Reflow state
     case REFLOW:
     {
-      digitalWrite(ovenPin, 0);
+      digitalWrite(ovenPin, 0);                                               // Turn off oven
       digitalWrite(LED2Pin, 0);
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
@@ -340,12 +342,41 @@ void loop()
       if(stateTime == reflowTime)
       {
         stateTime = 0;                                                        // Reset state time
-        TCCR1B = 0;                                                           // Stop Timer 1
+        
+        Serial.println("Please open oven door");                              // Prompt user to open oven door
+        Serial.println("Press 'set' to acknowledge door is open");
+        
+        while(digitalRead(setButtonPin) != 0);                                // Turn on buzzer until set button is pressed
+        {
+          tone(buzzerPin, MID_BUZZER_FREQ);
+        }
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        noTone(buzzerPin);                                                    // Turn off buzzer
+        state = COOLING;                                                      // Enter cooling state
+      }
+      break;
+    }
+    // Cooling state
+    case COOLING:
+    {
+      if(ovenTemp < SAFE_TO_HANDLE_TEMP)
+      {
+        stateTime = 0;                                                        // Reset state time
+        TCCR1B = 0;                                                           // Stop Timer 1 
+        
+        Serial.println();
         Serial.println("Reflow process complete");
-        Serial.print("Total reflow time:");
+        
+        tone(buzzerPin, HIGH_BUZZER_FREQ, LONG_BEEP);                         // Play end melody
+        delay(SHORT_BEEP);
+        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        delay(SHORT_BEEP);
+        tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);
+        
+        Serial.print("Total process time: ");                                 // Display total process time
         Serial.print(processTime);
-        delay(5000);
-        state = OFF;                                                          // Return to idle state
+        Serial.print(" seconds");
+        state = OFF;                                                          // Return to off state
       }
       break;
     }
