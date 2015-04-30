@@ -43,6 +43,9 @@
 #define REFLOW              4
 #define COOLING             5
 
+#define SOAK_DUTY_CYCLE     25                                                // Oven PWM duty cycle for soak state (0-255)
+#define REFLOW_DUTY_CYCLE   51                                                // Oven PWM duty cycle for reflow state (0-255)
+
 #define SOAK_TEMP_OFFSET    15                                                // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET  8                                                 // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 
@@ -290,8 +293,7 @@ void loop()
     // Soak state
     case SOAK:
     {
-      digitalWrite(ovenPin, 0);                                               // Turn off oven
-      digitalWrite(LED2Pin, 0);
+      analogWrite(ovenPin, SOAK_DUTY_CYCLE);                                  // Set corresponding oven PWM duty cycle
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -310,8 +312,7 @@ void loop()
     // Ramp to reflow state
     case RAMP_TO_REFLOW:
     {
-      analogWrite(ovenPin, 255);                                              // Set oven duty cycle to 100%
-      digitalWrite(LED2Pin, 1);
+      analogWrite(ovenPin, 255);                                              // Set oven PWM duty cycle to 100%
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -330,8 +331,7 @@ void loop()
     // Reflow state
     case REFLOW:
     {
-      digitalWrite(ovenPin, 0);                                               // Turn off oven
-      digitalWrite(LED2Pin, 0);
+      analogWrite(ovenPin, REFLOW_DUTY_CYCLE);                                // Set corresponding oven PWM duty cycle
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
