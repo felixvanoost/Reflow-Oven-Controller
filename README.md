@@ -5,7 +5,7 @@ EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY 
 see the CERN OHL v1.2 for applicable conditions.
 
 # Reflow Oven Controller
-An Arduino shield to convert a standard toaster oven into a reflow soldering oven for SMT assembly
+An Arduino-based project to convert a standard toaster oven into a reflow soldering oven for PCB assembly
 
 ----------
 Context
@@ -24,7 +24,7 @@ The specific thermal profile followed by the microcontroller will depend on the 
 Overview
 ----------
 
-For this project, an Arduino will monitor and control the toaster oven to follow a user-defined thermal profile. The required hardware, consisting of the following main functional blocks, will be mounted on an Arduino Proto Shield:
+For this project, an Arduino will monitor and control an off-the-shelf toaster oven to follow a user-defined thermal profile. The required hardware, consisting of the following main functional blocks, will be mounted on an Arduino Proto Shield:
 
 - A thermocouple to measure the temperature inside the oven
 - An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino
@@ -32,7 +32,7 @@ For this project, an Arduino will monitor and control the toaster oven to follow
 - Pushbuttons to allow the user to set the desired thermal profile parameters and start / stop the reflow process
 - LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete
 
-One crucial conponent not mentioned above is a solid-state relay, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that an SSR has already been installed in the oven - there are a number of very good tutorials online describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
+A solid-state relay is also required, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that a suitable oven has been purchased and an SSR has already been installed within - there are a number of very good tutorials describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
 
 The software for this project will be kept simple to make future improvements and modifications for different hardware setups straightforward. A finite state machine will be implemented in C, with a state corresponding to each stage in the reflow thermal profile. To control temperature, the code will simply decide whether to turn the oven on and off in order to reach and maintain the desired temperature at each stage of the reflow process (PID control may be integrated in the future).
 
