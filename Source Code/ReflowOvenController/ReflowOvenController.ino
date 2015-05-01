@@ -51,7 +51,7 @@
 #define REFLOW_TEMP_OFFSET  8                                                 // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 
 #define ERROR_TEMP          50                                                // Thermocouple error temperature threshold (stops reflow process if specified temperature is not reached within the first 30 seconds)
-#define SAFE_TO_HANDLE_TEMP 60                                                // Safe to handle temperature
+#define SAFE_TO_HANDLE_TEMP 60                                                // Safe-to-handle temperature
 
 byte state = OFF;
 
@@ -122,7 +122,7 @@ void getJunctionTemp()
   
   junctionReading = analogRead(junctionPin);                                  // Obtain 10-bit cold junction reading from the ADC
   junctionReading = ((junctionReading * 5.0 * 100.0) / 1023.0);               // Convert reading to temperature in Celsius
-  junctionTemp = byte(junctionReading);   
+  junctionTemp = byte(junctionReading);
   
   return;
 }
@@ -138,11 +138,11 @@ void getThermTemp()
   thermReading = analogRead(thermPin);                                        // Obtain 10-bit thermocouple reading from the ADC
   thermReading = ((thermReading * 5.0 * 1000.0) / 1023.0);                    // Convert reading to a voltage (in mV)
   
-  while(int(thermReading) > pgm_read_word_near(thermLUT + i))
+  while(int(thermReading) > pgm_read_word_near(thermLUT + i))                 // Iterate through LUT to find the closest matching voltage entry
   {
     i++;
   }
-  thermTemp = i;
+  thermTemp = i;                                                              // The index of the LUT entry containing the closest matching voltage is the temperature in Celsius
   
   return;
 }
@@ -238,7 +238,7 @@ void setParameters()
 
 void loop() 
 {
-  switch(state)                                                               // Finite state machine
+  switch(state)                                                               // Finite state machine control logic
   {
     // Idle state
     case OFF:
@@ -279,7 +279,7 @@ void loop()
         state = OFF;
         break;
       }
-      if(stateTime == 30 && ovenTemp < 50)                                    // Stop reflow process if oven does not reach 50C in the first 30s (thermocouple error)
+      if(stateTime == 30 && ovenTemp < ERROR_TEMP)                            // Stop reflow process if oven does not reach the specified error temperature in the first 30s (thermocouple error)
       {
         state = OFF;
         break;
@@ -289,11 +289,11 @@ void loop()
         digitalWrite(ovenPin, 0);
         digitalWrite(LED2Pin, 0);
       }
-      if(ovenTemp > soakTemp)                                                 // Enter soak state once soak time has elapsed
+      if(ovenTemp > soakTemp)                                                 // Enter soak state once soak temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
-        state = SOAK;                                                         // Enter soak state
+        state = SOAK;
       }
       break;
     }
@@ -308,11 +308,11 @@ void loop()
         state = OFF;
         break;
       }
-      if(stateTime == soakTime)
+      if(stateTime == soakTime)                                               // Enter ramp to reflow state once soak time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
-        state = RAMP_TO_REFLOW;                                               // Enter ramp to reflow state
+        state = RAMP_TO_REFLOW;
       }
       break;
     }
@@ -332,11 +332,11 @@ void loop()
         digitalWrite(ovenPin, 0);
         digitalWrite(LED2Pin, 0);
       }
-      if(ovenTemp > reflowTemp)
+      if(ovenTemp > reflowTemp)                                               // Enter reflow state once reflow temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
-        state = REFLOW;                                                       // Enter reflow state
+        state = REFLOW;
       }
       break;
     }
@@ -351,11 +351,11 @@ void loop()
         state = OFF;
         break;
       }
-      if(stateTime == reflowTime)
+      if(stateTime == reflowTime)                                             // Enter cooling state once reflow time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);                          // Alert user to open oven door with long beep
-        state = COOLING;                                                      // Enter cooling state
+        state = COOLING;
       }
       break;
     }
@@ -365,7 +365,7 @@ void loop()
       digitalWrite(ovenPin, 0);                                               // Turn oven off
       digitalWrite(LED2Pin, 0);
       
-      if(ovenTemp < SAFE_TO_HANDLE_TEMP)
+      if(ovenTemp < SAFE_TO_HANDLE_TEMP)                                      // Finish reflow process once safe-to-handle temperature is reached
       {
         stateTime = 0;                                                        // Reset state time
         TCCR1B = 0;                                                           // Stop Timer 1 
