@@ -23,8 +23,9 @@
 #define LOW_BUZZER_FREQ     3000                                              // Buzzer frequencies (Hz)
 #define MID_BUZZER_FREQ     4000
 #define HIGH_BUZZER_FREQ    5000
-#define SHORT_BEEP          100                                               // Short beep length (ms)
-#define LONG_BEEP           400                                               // Long beep length (ms)
+#define SHORT_BEEP          100                                               // Buzzer beep lengths (ms)
+#define MEDIUM_BEEP         400
+#define LONG_BEEP           3000
 
 #define MIN_SOAK_TEMP       120                                               // Minimum values for thermal profile parameters
 #define MIN_SOAK_TIME       30
@@ -252,13 +253,14 @@ void loop()
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
+      Serial.println();
       Serial.println("Starting reflow process");
 
-      tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);                            // Play start melody
+      tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);                          // Play start melody
       delay(SHORT_BEEP);
-      tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+      tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
       delay(SHORT_BEEP);
-      tone(buzzerPin, HIGH_BUZZER_FREQ, LONG_BEEP);
+      tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);
      
       initialiseTimer1();
       stateTime = 0;                                                          // Reset state time
@@ -282,10 +284,15 @@ void loop()
         state = OFF;
         break;
       }
-      if(ovenTemp > soakTemp - SOAK_TEMP_OFFSET)                              // Enter soak state once soak time has elapsed
+      if(ovenTemp > soakTemp - SOAK_TEMP_OFFSET)                              // Turn off oven prematurely to account for embodied heat
+      {
+        digitalWrite(ovenPin, 0);
+        digitalWrite(LED2Pin, 0);
+      }
+      if(ovenTemp > soakTemp)                                                 // Enter soak state once soak time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
-        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = SOAK;                                                         // Enter soak state
       }
       break;
@@ -304,7 +311,7 @@ void loop()
       if(stateTime == soakTime)
       {
         stateTime = 0;                                                        // Reset state time
-        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = RAMP_TO_REFLOW;                                               // Enter ramp to reflow state
       }
       break;
@@ -320,10 +327,15 @@ void loop()
         state = OFF;
         break;
       }
-      if(ovenTemp > reflowTemp - REFLOW_TEMP_OFFSET)
+      if(ovenTemp > reflowTemp - REFLOW_TEMP_OFFSET)                          // Turn off oven prematurely to account for embodied heat
+      {
+        digitalWrite(ovenPin, 0);
+        digitalWrite(LED2Pin, 0);
+      }
+      if(ovenTemp > reflowTemp)
       {
         stateTime = 0;                                                        // Reset state time
-        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = REFLOW;                                                       // Enter reflow state
       }
       break;
@@ -342,16 +354,7 @@ void loop()
       if(stateTime == reflowTime)
       {
         stateTime = 0;                                                        // Reset state time
-        
-        Serial.println("Please open oven door");                              // Prompt user to open oven door
-        Serial.println("Press 'set' to acknowledge door is open");
-        
-        while(digitalRead(setButtonPin) != 0);                                // Turn on buzzer until set button is pressed
-        {
-          tone(buzzerPin, MID_BUZZER_FREQ);
-        }
-        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
-        noTone(buzzerPin);                                                    // Turn off buzzer
+        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);                          // Alert user to open oven door with long beep
         state = COOLING;                                                      // Enter cooling state
       }
       break;
@@ -359,6 +362,9 @@ void loop()
     // Cooling state
     case COOLING:
     {
+      digitalWrite(ovenPin, 0);                                               // Turn oven off
+      digitalWrite(LED2Pin, 0);
+      
       if(ovenTemp < SAFE_TO_HANDLE_TEMP)
       {
         stateTime = 0;                                                        // Reset state time
@@ -367,15 +373,16 @@ void loop()
         Serial.println();
         Serial.println("Reflow process complete");
         
-        tone(buzzerPin, HIGH_BUZZER_FREQ, LONG_BEEP);                         // Play end melody
+        tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);                       // Play end melody
         delay(SHORT_BEEP);
-        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);
+        tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         delay(SHORT_BEEP);
-        tone(buzzerPin, LOW_BUZZER_FREQ, LONG_BEEP);
+        tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);
         
         Serial.print("Total process time: ");                                 // Display total process time
         Serial.print(processTime);
         Serial.print(" seconds");
+        delay(5000);
         state = OFF;                                                          // Return to off state
       }
       break;
