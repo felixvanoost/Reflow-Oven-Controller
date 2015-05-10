@@ -113,7 +113,7 @@ void setup()
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
 }
 
-// Description:		Obtains an analog reading for the cold junction from the LM35 and converts it to a temperature in Celsius 
+// Description:		Obtains an analog reading for the cold junction from the LM35Z and converts it to a temperature in Celsius 
 // Parameters:		-
 // Returns:		-
 void getJunctionTemp()
@@ -136,13 +136,13 @@ void getThermTemp()
   byte i = 0;
   
   thermReading = analogRead(thermPin);                                        // Obtain 10-bit thermocouple reading from the ADC
-  thermReading = ((thermReading * 5.0 * 1000.0) / 1023.0);                    // Convert reading to a voltage (in mV)
+  thermReading = ((thermReading * 5.0 * 1000.0) / 1023.0);                    // Convert reading to voltage (in mV)
   
-  while(int(thermReading) > pgm_read_word_near(thermLUT + i))                 // Iterate through LUT to find the closest matching voltage entry
+  while(int(thermReading) > pgm_read_word_near(thermLUT + i))                 // Iterate through LUT to find the entry closest to the reading voltage
   {
     i++;
   }
-  thermTemp = i;                                                              // The index of the LUT entry containing the closest matching voltage is the temperature in Celsius
+  thermTemp = i;                                                              // Index of the LUT entry closest to the reading voltage is the temperature in Celsius
   
   return;
 }
@@ -150,7 +150,7 @@ void getThermTemp()
 // Description:		Interrupt Service Routine for Timer 1
 //                      1. Increments the total process time and state time every second
 //                      2. Obtains temperature readings for the thermocouple and cold junction and calculates the current oven temperature
-//                      3. Displays the current oven temperature in the serial monitor
+//                      3. Displays the current oven temperature in HyperTerminal
 ISR(TIMER1_OVF_vect)
 {
   processTime++;                                                              // Increment total process and state time
@@ -171,12 +171,12 @@ void initialiseTimer1()
   TCCR1A = 0;                                                                 // Reset Timer 1 registers
   TCCR1B = 0;
   TIMSK1 |= (1 << TOIE1);                                                     // Enable Timer 1 overflow interrupt
-  TCNT1 = 0x0BDB;                                                             // Preload Timer 1 with 3035 to overflow at 1Hz
+  TCNT1 = 0x0BDB;                                                             // Preload Timer 1 with 3035 to produce overflow at 1Hz
   TCCR1B |= (1 << CS12);                                                      // Select clock source as internal 12MHz oscillator with CLK / 256 prescaling and start Timer 1
   sei();                                                                      // Enable global interrupts
 }
 
-// Description:		Reads the status of the pushbuttons and increments or decrements the given initial value within the specified minimum and maximum ranges until the set button is pressed
+// Description:		Reads the status of the pushbuttons and increments / decrements the given value within the specified minimum / maximum ranges until the set button is pressed
 // Parameters:		value - Initial value of the thermal profile parameter currently being set
 //                      minimum - Minimum acceptable value for specified parameter
 //                      maximum - Maximum acceptable value for specified parameter
@@ -197,7 +197,6 @@ int readButtons(int value, int minimum, int maximum)
     Serial.print("\r");                                                       // Return to start of line in serial monitor
     delay(BUTTON_DELAY);
   }
-  
   while(digitalRead(setButtonPin) == 0);                                      // Wait for set button to be released
   delay(DEBOUNCE_DELAY);
   
@@ -209,7 +208,7 @@ int readButtons(int value, int minimum, int maximum)
 // Returns:		-
 void setParameters()
 {
-  Serial.write("\x1b[2J");                                                    // ANSI sequence to clear screen (in HyperTerminal)
+  Serial.write("\x1b[2J");                                                    // ANSI sequence to clear screen in HyperTerminal
   Serial.println("Soak Temperature:");
   soakTemp = readButtons(soakTemp, MIN_SOAK_TEMP, MAX_SOAK_TEMP);             // Set soak temperature
   Serial.println(soakTemp);                                                   // Display entered soak temperature
@@ -264,6 +263,9 @@ void loop()
      
       initialiseTimer1();
       stateTime = 0;                                                          // Reset state time
+      Serial.println();                                                       // Display new state
+      Serial.println("RAMP TO SOAK");
+      Serial.println();
       state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
       break;
     }
@@ -292,6 +294,9 @@ void loop()
       if(ovenTemp > soakTemp)                                                 // Enter soak state once soak temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
+        Serial.println();                                                     // Display new state
+        Serial.println("SOAK");
+        Serial.println();
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = SOAK;
       }
@@ -311,6 +316,9 @@ void loop()
       if(stateTime == soakTime)                                               // Enter ramp to reflow state once soak time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
+        Serial.println();                                                     // Display new state
+        Serial.println("RAMP TO REFLOW");
+        Serial.println();
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = RAMP_TO_REFLOW;
       }
@@ -335,6 +343,9 @@ void loop()
       if(ovenTemp > reflowTemp)                                               // Enter reflow state once reflow temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
+        Serial.println();                                                     // Display new state
+        Serial.println("REFLOW");
+        Serial.println();
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = REFLOW;
       }
@@ -354,7 +365,18 @@ void loop()
       if(stateTime == reflowTime)                                             // Enter cooling state once reflow time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
-        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);                          // Alert user to open oven door with long beep
+        Serial.println();                                                     // Display new state
+        Serial.println("COOLING");
+        Serial.println();
+        Serial.println("Please open oven door");
+        Serial.println("Press 'set' to confirm door has been opened");
+        
+        while(digitalRead(setButtonPin) != 0);
+        {
+          tone(buzzerPin, MID_BUZZER_FREQ);                                   // Alert user to open oven door
+        }
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released before turning off buzzer
+        noTone(buzzerPin);
         state = COOLING;
       }
       break;
@@ -368,7 +390,7 @@ void loop()
       if(ovenTemp < SAFE_TO_HANDLE_TEMP)                                      // Finish reflow process once safe-to-handle temperature is reached
       {
         stateTime = 0;                                                        // Reset state time
-        TCCR1B = 0;                                                           // Stop Timer 1 
+        TCCR1B = 0;                                                           // Stop Timer 1
         
         Serial.println();
         Serial.println("Reflow process complete");
@@ -382,7 +404,11 @@ void loop()
         Serial.print("Total process time: ");                                 // Display total process time
         Serial.print(processTime);
         Serial.print(" seconds");
-        delay(5000);
+        Serial.println();
+        Serial.println("Press 'set' to return to start");
+        
+        while(digitalRead(setButtonPin) != 0);                                // Wait for set button to be pressed
+        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         state = OFF;                                                          // Return to off state
       }
       break;
