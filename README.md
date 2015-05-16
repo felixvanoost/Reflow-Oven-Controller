@@ -5,7 +5,7 @@ EXPRESS OR IMPLIED WARRANTY, INCLUDING OF MERCHANTABILITY, SATISFACTORY QUALITY 
 see the CERN OHL v1.2 for applicable conditions.
 
 # Reflow Oven Controller
-An Arduino-based project to convert a standard toaster oven into a reflow soldering oven for PCB assembly
+An Arduino-based project to convert a standard toaster oven into a reflow soldering oven for PCB assembly.
 
 ----------
 Context
@@ -66,6 +66,6 @@ Required Software
 ----------
 
 - Arduino IDE (latest version preferred)
-- Windows HyperTerminal
+- Terminal emulation software
 
-HyperTerminal is a far more advanced version of the Arduino serial monitor, making it useful for providing user feedback when setting the thermal parameters. The Arduino serial monitor is designed mainly for debugging purposes and thus lacks many of the features needed to present and format data intuitively for user input / feedback purposes.
+Any terminal emulator of your choice should be suitable for this project. I will be using HyperTerminal, which is a far more advanced version of the Arduino serial monitor. The included Arduino serial monitor is designed mainly for debugging purposes and thus lacks many of the features needed to present and format data intuitively for user input / feedback purposes.
