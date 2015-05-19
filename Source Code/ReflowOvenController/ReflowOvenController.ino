@@ -111,6 +111,8 @@ void setup()
   digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
   digitalWrite(LED2Pin, 0); 
   
+  TCCR0B = _BV(CS00) | _BV(CS02);                                             // Set Timer 0 prescaling to CLK / 1024 (reduces PWM frequency to 60Hz for oven SSR output)
+  
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
 }
 
