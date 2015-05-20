@@ -98,12 +98,10 @@ const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  
 
 void setup() 
 {
-  pinMode(thermPin, INPUT);                                                   // Declare digital pins as inputs / outputs
-  pinMode(junctionPin, INPUT);
-  pinMode(setButtonPin, INPUT);
-  pinMode(incButtonPin, INPUT);
-  pinMode(decButtonPin, INPUT);
-  pinMode(buzzerPin, OUTPUT);
+  pinMode(setButtonPin, INPUT_PULLUP);                                        // Declare pushbutton pins as inputs with internal pull-up resistors enabled
+  pinMode(incButtonPin, INPUT_PULLUP);
+  pinMode(decButtonPin, INPUT_PULLUP);
+  pinMode(buzzerPin, OUTPUT);                                                 // Declare corresponding pins as outputs
   pinMode(ovenPin, OUTPUT);
   pinMode(LED1Pin, OUTPUT);
   pinMode(LED2Pin, OUTPUT);
