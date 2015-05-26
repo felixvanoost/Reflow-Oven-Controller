@@ -151,6 +151,7 @@ byte getThermTemp()
 }
 
 // Description:		Interrupt Service Routine for Timer 1
+//                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average
 //                      2. Increments the total cycle time and state time every second
 //                      3. Calculates the current oven temperature every second and displays the current oven temperature in the serial monitor
 //                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR)
@@ -158,7 +159,7 @@ ISR(TIMER1_OVF_vect)
 {
   overflowCount++;
   
-  if(overflowCount == (100 / READING_FREQUENCY))                              // Obtain temperature readings for the thermocouple and cold junction and calculate sum
+  if(overflowCount == (100 / READING_FREQUENCY))                              // Obtain temperature readings for the thermocouple and cold junction and calculate cumulative sum
   {
     ovenTempSum += getThermTemp() + getJunctionTemp();
   }
@@ -175,7 +176,7 @@ ISR(TIMER1_OVF_vect)
     ovenTempSum = 0;
   }
   digitalWrite(ovenPin, overflowCount > PWMValue ? 0:1);                      // Turn off oven if overflowCount > PWMValue or turn on if overflowCount < PWMValue
-  digitalWrite(LED2Pin, overflowCount > PWMValue ? 0:1);
+  digitalWrite(LED2Pin, overflowCount > PWMValue ? 0:1);                      // Toggle LED2 in correspondance with oven state
 }
 
 // Description:		Initialises Timer 1 to interrupt every 10ms
@@ -268,6 +269,7 @@ void loop()
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
+      digitalWrite(LED1Pin, 1);                                               // Turn on LED1
       Serial.println();
       Serial.println("Starting reflow process");
 
@@ -404,6 +406,7 @@ void loop()
         stateTime = 0;                                                        // Reset state time
         TCCR1B = 0;                                                           // Stop Timer 1
         
+        digitalWrite(LED1Pin, 0);                                             // Turn off LED1
         Serial.println();
         Serial.println("Reflow process complete");
         
