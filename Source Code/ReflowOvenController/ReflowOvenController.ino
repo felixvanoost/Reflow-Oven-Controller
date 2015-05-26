@@ -7,52 +7,54 @@
 
 #include <avr/pgmspace.h>
 
-#define thermPin            A0                                                // Thermocouple input pin (A0)
-#define junctionPin         A1                                                // Cold junction input pin (A1)
+#define thermPin                    A0                                        // Thermocouple input pin (A0)
+#define junctionPin                 A1                                        // Cold junction input pin (A1)
 
-#define setButtonPin        2                                                 // Pushbutton input pins (D2-D4)
-#define incButtonPin        3
-#define decButtonPin        4
-#define ovenPin             5                                                 // Oven SSR pin (D5)
-#define buzzerPin           6                                                 // Buzzer output pin (D6)
-#define LED1Pin             7                                                 // LED output pins (D7-D8)
-#define LED2Pin             8
+#define setButtonPin                2                                         // Pushbutton input pins (D2-D4)
+#define incButtonPin                3
+#define decButtonPin                4
+#define ovenPin                     5                                         // Oven SSR pin (D5)
+#define buzzerPin                   6                                         // Buzzer output pin (D6)
+#define LED1Pin                     7                                         // LED output pins (D7-D8)
+#define LED2Pin                     8
 
-#define BUTTON_DELAY        120                                               // Pushbutton delay for increment / decrement (ms)
-#define DEBOUNCE_DELAY      50                                                // Pushbutton debounce delay (ms)
+#define BUTTON_DELAY                120                                       // Pushbutton delay for increment / decrement (ms)
+#define DEBOUNCE_DELAY              50                                        // Pushbutton debounce delay (ms)
 
-#define LOW_BUZZER_FREQ     3000                                              // Buzzer frequencies (Hz)
-#define MID_BUZZER_FREQ     4000
-#define HIGH_BUZZER_FREQ    5000
-#define SHORT_BEEP          100                                               // Buzzer beep lengths (ms)
-#define MEDIUM_BEEP         400
-#define LONG_BEEP           3000
+#define LOW_BUZZER_FREQ             3000                                      // Buzzer frequencies (Hz)
+#define MID_BUZZER_FREQ             4000
+#define HIGH_BUZZER_FREQ            5000
+#define SHORT_BEEP                  100                                       // Buzzer beep lengths (ms)
+#define MEDIUM_BEEP                 400
+#define LONG_BEEP                   3000
 
-#define MIN_SOAK_TEMP       120                                               // Minimum values for thermal profile parameters
-#define MIN_SOAK_TIME       30
-#define MIN_REFLOW_TEMP     200
-#define MIN_REFLOW_TIME     15
+#define MIN_SOAK_TEMP               120                                       // Minimum values for thermal profile parameters
+#define MIN_SOAK_TIME               30
+#define MIN_REFLOW_TEMP             200
+#define MIN_REFLOW_TIME             15
 
-#define MAX_SOAK_TEMP       180                                               // Maximum values for thermal profile parameters
-#define MAX_SOAK_TIME       90
-#define MAX_REFLOW_TEMP     240
-#define MAX_REFLOW_TIME     60
+#define MAX_SOAK_TEMP               180                                       // Maximum values for thermal profile parameters
+#define MAX_SOAK_TIME               90
+#define MAX_REFLOW_TEMP             240
+#define MAX_REFLOW_TIME             60
 
-#define OFF                 0                                                 // Finite state machine states
-#define RAMP_TO_SOAK        1
-#define SOAK                2
-#define RAMP_TO_REFLOW      3
-#define REFLOW              4
-#define COOLING             5
+#define OFF                         0                                         // Finite state machine states
+#define RAMP_TO_SOAK                1
+#define SOAK                        2
+#define RAMP_TO_REFLOW              3
+#define REFLOW                      4
+#define COOLING                     5
 
-#define SOAK_DUTY_CYCLE     10                                                // Oven PWM duty cycle for soak state (%)
-#define REFLOW_DUTY_CYCLE   20                                                // Oven PWM duty cycle for reflow state (%)
+#define MOVING_AVERAGE_WINDOW_SIZE  4                                         // Window size of moving average filter for temperature readings
 
-#define SOAK_TEMP_OFFSET    15                                                // Soak temperature offset (to account for embodied heat in oven at soak stage)
-#define REFLOW_TEMP_OFFSET  8                                                 // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
+#define SOAK_DUTY_CYCLE             10                                        // Oven PWM duty cycle for soak state (%)
+#define REFLOW_DUTY_CYCLE           20                                        // Oven PWM duty cycle for reflow state (%)
 
-#define ERROR_TEMP          50                                                // Thermocouple error temperature threshold (stops reflow process if specified temperature is not reached within the first 30 seconds)
-#define SAFE_TO_HANDLE_TEMP 60                                                // Safe-to-handle temperature
+#define SOAK_TEMP_OFFSET            15                                        // Soak temperature offset (to account for embodied heat in oven at soak stage)
+#define REFLOW_TEMP_OFFSET          8                                         // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
+
+#define ERROR_TEMP                  50                                        // Thermocouple error temperature threshold (stops reflow process if specified temperature is not reached within the first 30 seconds)
+#define SAFE_TO_HANDLE_TEMP         60                                        // Safe-to-handle temperature
 
 byte state = OFF;
 
@@ -61,9 +63,10 @@ byte soakTime = 60;
 byte reflowTemp = 220;
 byte reflowTime = 45;
 
-byte ovenTemp = 0;                                                            // Declare oven temperature variable
+byte ovenTempSum = 0;                                                         // Declare temperature variables
+byte ovenTemp = 0;
 
-volatile unsigned int processTime = 0;                                        // Declare time variables
+volatile unsigned int cycleTime = 0;                                          // Declare time variables
 volatile byte stateTime = 0;
 
 volatile byte overflowCount = 0;                                              // Declare Timer 1 overflow count variable
@@ -148,22 +151,29 @@ byte getThermTemp()
 }
 
 // Description:		Interrupt Service Routine for Timer 1
-//                      1. Increments the total process time and state time every second
-//                      2. Obtains temperature readings for the thermocouple and cold junction and calculates the current oven temperature
-//                      3. Displays the current oven temperature in HyperTerminal
-//                      4. Controls the oven using a slower form of PWM (due to switching speed limitations of SSRs)
+//                      1. Obtains temperature readings for the thermocouple and cold junction and applies a moving average filter to smooth out irregularities in the data
+//                      2. Increments the total cycle time and state time every second
+//                      3. Calculates the current oven temperature every second and displays the current oven temperature in the serial monitor
+//                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR)
 ISR(TIMER1_OVF_vect)
 {
   overflowCount++;
   
+  if(overflowCount == (100 / MOVING_AVERAGE_WINDOW_SIZE))                     // Obtain temperature readings for the thermocouple and cold junction and sum with previous readings
+  {
+    ovenTempSum += getThermTemp() + getJunctionTemp();
+  }
+  
   if(overflowCount == 100)                                                    // Execute code every second (100 timer overflows)
   {
-    overflowCount = 0;                                                        // Reset overflow count
-    processTime++;                                                            // Increment total process and state time
+    cycleTime++;                                                              // Increment total cycle and state time variables
     stateTime++;
   
-    ovenTemp = getThermTemp() + getJunctionTemp();                            // Calculate current oven temperature by summing up the thermocouple and cold junction temperature readings
+    ovenTemp = ovenTempSum / MOVING_AVERAGE_WINDOW_SIZE;                      // Calculate current oven temperature by finding the average value of previously gathered temperature readings
     Serial.println(ovenTemp);                                                 // Display current oven temperature
+    
+    overflowCount = 0;                                                        // Reset overflow count and sum of oven temperature readings
+    ovenTempSum = 0;
   }
   digitalWrite(ovenPin, overflowCount > PWMValue ? 0:1);                      // Turn off oven if overflowCount > PWMValue or turn on if overflowCount < PWMValue
   digitalWrite(LED2Pin, overflowCount > PWMValue ? 0:1);
@@ -251,7 +261,7 @@ void loop()
     case OFF:
     {
       TCCR1B = 0;                                                             // Stop Timer 1
-      processTime = 0;                                                        // Reset process time
+      cycleTime = 0;                                                          // Reset cycle time
       PWMValue = 0;                                                           // Turn off oven
       digitalWrite(LED1Pin, 0);
       setParameters();
@@ -404,11 +414,11 @@ void loop()
         delay(SHORT_BEEP);
         tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);
         
-        Serial.print("Total process time: ");                                 // Display total process time
-        Serial.print(processTime);
+        Serial.print("Total cycle time: ");                                   // Display total cycle time
+        Serial.print(cycleTime);
         Serial.print(" seconds");
         Serial.println();
-        Serial.println("Press 'set' to return to start");
+        Serial.println("Press 'set' to begin a new cycle");
         
         while(digitalRead(setButtonPin) != 0);                                // Wait for set button to be pressed
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
