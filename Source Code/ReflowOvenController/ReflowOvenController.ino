@@ -61,9 +61,7 @@ byte soakTime = 60;
 byte reflowTemp = 220;
 byte reflowTime = 45;
 
-byte thermTemp = 0;                                                           // Declare temperature variables
-byte junctionTemp = 0;
-byte ovenTemp = 0;
+byte ovenTemp = 0;                                                            // Declare oven temperature variable
 
 volatile unsigned int processTime = 0;                                        // Declare time variables
 volatile byte stateTime = 0;
@@ -119,22 +117,21 @@ void setup()
 
 // Description:		Obtains an analog reading for the cold junction from the LM35Z and converts it to a temperature in Celsius 
 // Parameters:		-
-// Returns:		-
-void getJunctionTemp()
+// Returns:		A temperature reading for the cold junction in Celsius
+byte getJunctionTemp()
 {
   double junctionReading = 0;
   
   junctionReading = analogRead(junctionPin);                                  // Obtain 10-bit cold junction reading from the ADC
   junctionReading = ((junctionReading * 5.0 * 100.0) / 1023.0);               // Convert reading to temperature in Celsius
-  junctionTemp = byte(junctionReading);
   
-  return;
+  return byte(junctionReading);
 }
 
 // Description:		Obtains an analog reading for the thermcouple and converts it to a temperature in Celsius using a LUT
 // Parameters:		-
-// Returns:		-
-void getThermTemp()
+// Returns:		A temperature reading for the thermocouple in Celsius
+byte getThermTemp()
 {
   double thermReading = 0;
   byte i = 0;
@@ -146,9 +143,8 @@ void getThermTemp()
   {
     i++;
   }
-  thermTemp = i;                                                              // Index of the LUT entry closest to the reading voltage is the temperature in Celsius
   
-  return;
+  return i;                                                                   // Index of the LUT entry closest to the reading voltage is the temperature in Celsius
 }
 
 // Description:		Interrupt Service Routine for Timer 1
@@ -166,9 +162,7 @@ ISR(TIMER1_OVF_vect)
     processTime++;                                                            // Increment total process and state time
     stateTime++;
   
-    getThermTemp();                                                           // Obtain temperature readings for the thermocouple and cold junction
-    getJunctionTemp();
-    ovenTemp = thermTemp + junctionTemp;                                      // Calculate current oven temperature
+    ovenTemp = getThermTemp() + getJunctionTemp();                            // Calculate current oven temperature by summing up the thermocouple and cold junction temperature readings
     Serial.println(ovenTemp);                                                 // Display current oven temperature
   }
   digitalWrite(ovenPin, overflowCount > PWMValue ? 0:1);                      // Turn off oven if overflowCount > PWMValue or turn on if overflowCount < PWMValue
