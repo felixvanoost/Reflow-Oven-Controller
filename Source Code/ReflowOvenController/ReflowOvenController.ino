@@ -45,7 +45,7 @@
 #define REFLOW                   4
 #define COOLING                  5
 
-#define READING_FREQUENCY        4                                            // Frequency of temperature readings (Hz)
+#define READING_FREQUENCY        5                                            // Frequency of temperature readings (1, 2, 4, 5, 10, 20, 25, 50, or 100Hz)
 
 #define SOAK_DUTY_CYCLE          10                                           // Oven PWM duty cycle for soak state (%)
 #define REFLOW_DUTY_CYCLE        20                                           // Oven PWM duty cycle for reflow state (%)
@@ -63,13 +63,13 @@ byte soakTime = 60;
 byte reflowTemp = 220;
 byte reflowTime = 45;
 
-byte ovenTempSum = 0;                                                         // Declare temperature variables
-byte ovenTemp = 0;
+int ovenTempSum = 0;                                                          // Declare temperature variables
+int ovenTemp = 0;
 
 volatile unsigned int cycleTime = 0;                                          // Declare time variables
 volatile byte stateTime = 0;
 
-volatile byte overflowCount = 0;                                              // Declare Timer 1 overflow count variable
+volatile byte interruptCount = 0;                                             // Declare Timer 1 interrupt count variable
 volatile byte readingIntervalCount = 0;                                       // Declare Timer 1 reading interval count variable
 volatile byte PWMValue;                                                       // Declare PWM duty cycle variable for oven SSR control
 
@@ -151,23 +151,23 @@ byte getThermTemp()
   return i;                                                                   // Index of the LUT entry closest to the reading voltage is the temperature in Celsius
 }
 
-// Description:		Interrupt Service Routine for Timer 1
+// Description:		CTC Interrupt Service Routine for Timer 1
 //                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average
 //                      2. Increments the total cycle time and state time every second
 //                      3. Calculates the current oven temperature every second and displays the current oven temperature in the serial monitor
 //                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR)
-ISR(TIMER1_OVF_vect)
+ISR(TIMER1_COMPA_vect)
 {
-  overflowCount++;
+  interruptCount++;
   readingIntervalCount++;
   
   if(readingIntervalCount == (100 / READING_FREQUENCY))                       // Obtain temperature readings for the thermocouple and cold junction at regular intervals and calculate cumulative sum
   {
-    ovenTempSum += getThermTemp() + getJunctionTemp();
+    ovenTempSum += /*getThermTemp() +*/ getJunctionTemp();
     readingIntervalCount = 0;
   }
   
-  if(overflowCount == 100)                                                    // Execute code every second (100 timer overflows)
+  if(interruptCount == 100)                                                   // Execute code every second (100 timer overflows)
   {
     cycleTime++;                                                              // Increment total cycle and state time variables
     stateTime++;
@@ -175,11 +175,11 @@ ISR(TIMER1_OVF_vect)
     ovenTemp = ovenTempSum / READING_FREQUENCY;                               // Calculate current oven temperature by finding the average value of previously gathered temperature readings
     Serial.println(ovenTemp);                                                 // Display current oven temperature
     
-    overflowCount = 0;                                                        // Reset overflow count and sum of oven temperature readings
+    interruptCount = 0;                                                       // Reset interrupt count and sum of oven temperature readings
     ovenTempSum = 0;
   }
-  digitalWrite(ovenPin, overflowCount > PWMValue ? 0:1);                      // Turn off oven if overflowCount > PWMValue or turn on if overflowCount < PWMValue
-  digitalWrite(LED2Pin, overflowCount > PWMValue ? 0:1);                      // Toggle LED2 in correspondance with oven state
+  digitalWrite(ovenPin, interruptCount > PWMValue ? 0:1);                     // Turn off oven if interruptCount > PWMValue or turn on if interruptCount < PWMValue
+  digitalWrite(LED2Pin, interruptCount > PWMValue ? 0:1);                     // Toggle LED2 to mirror oven state
 }
 
 // Description:		Initialises Timer 1 to interrupt every 10ms
@@ -190,9 +190,10 @@ void initialiseTimer1()
   cli();                                                                      // Disable global interrupts
   TCCR1A = 0;                                                                 // Reset Timer 1 registers
   TCCR1B = 0;
-  TIMSK1 |= (1 << TOIE1);                                                     // Enable Timer 1 overflow interrupt
-  TCNT1H = highByte(0xB1DF);                                                  // Preload Timer 1 with 45,535 to produce overflow at 100Hz
-  TCNT1L = lowByte(0xB1DF);
+  TCNT1 = 0;                                                                  // Load Timer 1 with 0
+  OCR1A = 0x4E1F;                                                             // Load output compare register with 19,999 to create a compare match interrupt every 10ms
+  TIMSK1 |= (1 << OCIE1A);                                                    // Enable Timer 1 CTC (Clear Timer on Compare) interrupt
+  TCCR1B |= (1 << WGM12);                                                     // Select CTC mode
   TCCR1B |= (1 << CS11);                                                      // Select internal 16MHz oscillator with CLK / 8 prescaling as clock source and start Timer 1
   sei();                                                                      // Enable global interrupts
 }
