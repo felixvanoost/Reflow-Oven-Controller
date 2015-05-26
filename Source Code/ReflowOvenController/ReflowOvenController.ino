@@ -45,8 +45,8 @@
 #define REFLOW              4
 #define COOLING             5
 
-#define SOAK_DUTY_CYCLE     25                                                // Oven PWM duty cycle for soak state (0-255)
-#define REFLOW_DUTY_CYCLE   51                                                // Oven PWM duty cycle for reflow state (0-255)
+#define SOAK_DUTY_CYCLE     10                                                // Oven PWM duty cycle for soak state (%)
+#define REFLOW_DUTY_CYCLE   20                                                // Oven PWM duty cycle for reflow state (%)
 
 #define SOAK_TEMP_OFFSET    15                                                // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET  8                                                 // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
@@ -67,6 +67,9 @@ byte ovenTemp = 0;
 
 volatile unsigned int processTime = 0;                                        // Declare time variables
 volatile byte stateTime = 0;
+
+volatile byte overflowCount = 0;                                              // Declare Timer 1 overflow count variable
+volatile byte PWMValue;                                                       // Declare PWM duty cycle variable for oven SSR control
 
 // 0-255C LUT for K-type thermocouple (stored in program memory)
 const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  149,  168,
@@ -98,18 +101,18 @@ const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  
 
 void setup() 
 {
-  pinMode(setButtonPin, INPUT_PULLUP);                                        // Declare pushbutton pins as inputs with internal pull-up resistors enabled
-  pinMode(incButtonPin, INPUT_PULLUP);
-  pinMode(decButtonPin, INPUT_PULLUP);
-  pinMode(buzzerPin, OUTPUT);                                                 // Declare corresponding pins as outputs
+  pinMode(thermPin, INPUT);                                                   // Declare digital pins as inputs / outputs
+  pinMode(junctionPin, INPUT);
+  pinMode(setButtonPin, INPUT);
+  pinMode(incButtonPin, INPUT);
+  pinMode(decButtonPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
   pinMode(ovenPin, OUTPUT);
   pinMode(LED1Pin, OUTPUT);
   pinMode(LED2Pin, OUTPUT);
   
   digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
   digitalWrite(LED2Pin, 0); 
-  
-  TCCR0B = _BV(CS00) | _BV(CS02);                                             // Set Timer 0 prescaling to CLK / 1024 (reduces PWM frequency to 60Hz for oven SSR output)
   
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
 }
@@ -152,18 +155,27 @@ void getThermTemp()
 //                      1. Increments the total process time and state time every second
 //                      2. Obtains temperature readings for the thermocouple and cold junction and calculates the current oven temperature
 //                      3. Displays the current oven temperature in HyperTerminal
+//                      4. Controls the oven using a slower form of PWM (due to switching speed limitations of SSRs)
 ISR(TIMER1_OVF_vect)
 {
-  processTime++;                                                              // Increment total process and state time
-  stateTime++;
+  overflowCount++;
   
-  getThermTemp();                                                             // Obtain temperature readings for the thermocouple and cold junction
-  getJunctionTemp();
-  ovenTemp = thermTemp + junctionTemp;                                        // Calculate current oven temperature
-  Serial.println(ovenTemp);                                                   // Display current oven temperature
+  if(overflowCount == 100)                                                    // Execute code every second (100 timer overflows)
+  {
+    overflowCount = 0;                                                        // Reset overflow count
+    processTime++;                                                            // Increment total process and state time
+    stateTime++;
+  
+    getThermTemp();                                                           // Obtain temperature readings for the thermocouple and cold junction
+    getJunctionTemp();
+    ovenTemp = thermTemp + junctionTemp;                                      // Calculate current oven temperature
+    Serial.println(ovenTemp);                                                 // Display current oven temperature
+  }
+  digitalWrite(ovenPin, overflowCount > PWMValue ? 0:1);                      // Turn off oven if overflowCount > PWMValue or turn on if overflowCount < PWMValue
+  digitalWrite(LED2Pin, overflowCount > PWMValue ? 0:1);
 }
 
-// Description:		Initialises Timer 1 to interrupt every second
+// Description:		Initialises Timer 1 to interrupt every 10ms
 // Parameters:		-
 // Returns:		-
 void initialiseTimer1()
@@ -172,8 +184,9 @@ void initialiseTimer1()
   TCCR1A = 0;                                                                 // Reset Timer 1 registers
   TCCR1B = 0;
   TIMSK1 |= (1 << TOIE1);                                                     // Enable Timer 1 overflow interrupt
-  TCNT1 = 0x0BDB;                                                             // Preload Timer 1 with 3035 to produce overflow at 1Hz
-  TCCR1B |= (1 << CS12);                                                      // Select clock source as internal 12MHz oscillator with CLK / 256 prescaling and start Timer 1
+  TCNT1H = highByte(0xB1DF);                                                  // Preload Timer 1 with 45,535 to produce overflow at 100Hz
+  TCNT1L = lowByte(0xB1DF);
+  TCCR1B |= (1 << CS11);                                                      // Select internal 16MHz oscillator with CLK / 8 prescaling as clock source and start Timer 1
   sei();                                                                      // Enable global interrupts
 }
 
@@ -245,9 +258,8 @@ void loop()
     {
       TCCR1B = 0;                                                             // Stop Timer 1
       processTime = 0;                                                        // Reset process time
-      digitalWrite(ovenPin, 0);                                               // Turn off oven
-      digitalWrite(LED1Pin, 0);                                               // Turn off LEDs
-      digitalWrite(LED2Pin, 0);
+      PWMValue = 0;                                                           // Turn off oven
+      digitalWrite(LED1Pin, 0);
       setParameters();
       
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
@@ -273,8 +285,7 @@ void loop()
     // Ramp to soak state
     case RAMP_TO_SOAK:
     { 
-      analogWrite(ovenPin, 255);                                              // Set oven duty cycle to 100%
-      digitalWrite(LED2Pin, 1);
+      PWMValue = 100;                                                         // Set oven duty cycle to 100%
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -289,8 +300,7 @@ void loop()
       }
       if(ovenTemp > soakTemp - SOAK_TEMP_OFFSET)                              // Turn off oven prematurely to account for embodied heat
       {
-        digitalWrite(ovenPin, 0);
-        digitalWrite(LED2Pin, 0);
+        PWMValue = 0;
       }
       if(ovenTemp > soakTemp)                                                 // Enter soak state once soak temperature has been reached
       {
@@ -306,7 +316,7 @@ void loop()
     // Soak state
     case SOAK:
     {
-      analogWrite(ovenPin, SOAK_DUTY_CYCLE);                                  // Set corresponding oven PWM duty cycle
+      PWMValue = SOAK_DUTY_CYCLE;                                             // Set corresponding oven PWM duty cycle
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -328,7 +338,7 @@ void loop()
     // Ramp to reflow state
     case RAMP_TO_REFLOW:
     {
-      analogWrite(ovenPin, 255);                                              // Set oven PWM duty cycle to 100%
+      PWMValue = 100;                                                         // Set oven PWM duty cycle to 100%
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -338,7 +348,7 @@ void loop()
       }
       if(ovenTemp > reflowTemp - REFLOW_TEMP_OFFSET)                          // Turn off oven prematurely to account for embodied heat
       {
-        digitalWrite(ovenPin, 0);
+        PWMValue = 0;
         digitalWrite(LED2Pin, 0);
       }
       if(ovenTemp > reflowTemp)                                               // Enter reflow state once reflow temperature has been reached
@@ -355,7 +365,7 @@ void loop()
     // Reflow state
     case REFLOW:
     {
-      analogWrite(ovenPin, REFLOW_DUTY_CYCLE);                                // Set corresponding oven PWM duty cycle
+      PWMValue = REFLOW_DUTY_CYCLE;                                           // Set corresponding oven PWM duty cycle
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -366,6 +376,7 @@ void loop()
       if(stateTime == reflowTime)                                             // Enter cooling state once reflow time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
+        PWMValue = 0;                                                         // Turn oven off
         Serial.println();                                                     // Display new state
         Serial.println("COOLING");
         Serial.println();
@@ -385,9 +396,6 @@ void loop()
     // Cooling state
     case COOLING:
     {
-      digitalWrite(ovenPin, 0);                                               // Turn oven off
-      digitalWrite(LED2Pin, 0);
-      
       if(ovenTemp < SAFE_TO_HANDLE_TEMP)                                      // Finish reflow process once safe-to-handle temperature is reached
       {
         stateTime = 0;                                                        // Reset state time
