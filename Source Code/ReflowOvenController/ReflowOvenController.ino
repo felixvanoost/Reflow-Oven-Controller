@@ -70,6 +70,7 @@ volatile unsigned int cycleTime = 0;                                          //
 volatile byte stateTime = 0;
 
 volatile byte overflowCount = 0;                                              // Declare Timer 1 overflow count variable
+volatile byte readingIntervalCount = 0;                                       // Declare Timer 1 reading interval count variable
 volatile byte PWMValue;                                                       // Declare PWM duty cycle variable for oven SSR control
 
 // 0-255C LUT for K-type thermocouple (stored in program memory)
@@ -158,10 +159,12 @@ byte getThermTemp()
 ISR(TIMER1_OVF_vect)
 {
   overflowCount++;
+  readingIntervalCount++;
   
-  if(overflowCount == (100 / READING_FREQUENCY))                              // Obtain temperature readings for the thermocouple and cold junction and calculate cumulative sum
+  if(readingIntervalCount == (100 / READING_FREQUENCY))                       // Obtain temperature readings for the thermocouple and cold junction at regular intervals and calculate cumulative sum
   {
     ovenTempSum += getThermTemp() + getJunctionTemp();
+    readingIntervalCount = 0;
   }
   
   if(overflowCount == 100)                                                    // Execute code every second (100 timer overflows)
@@ -408,7 +411,7 @@ void loop()
         
         digitalWrite(LED1Pin, 0);                                             // Turn off LED1
         Serial.println();
-        Serial.println("Reflow process complete");
+        Serial.println("Reflow cycle complete");
         
         tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);                       // Play end melody
         delay(SHORT_BEEP);
