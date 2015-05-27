@@ -103,15 +103,11 @@ const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  
 
 void setup() 
 {
-  pinMode(thermPin, INPUT);                                                   // Declare digital pins as inputs / outputs
+  pinMode(thermPin, INPUT);                                                   // Declare thermocouple and temperature sensor pins as inputs
   pinMode(junctionPin, INPUT);
-  pinMode(setButtonPin, INPUT);
-  pinMode(incButtonPin, INPUT);
-  pinMode(decButtonPin, INPUT);
-  pinMode(buzzerPin, OUTPUT);
-  pinMode(ovenPin, OUTPUT);
-  pinMode(LED1Pin, OUTPUT);
-  pinMode(LED2Pin, OUTPUT);
+  pinMode(setButtonPin, INPUT_PULLUP);                                        // Declare pushbutton pins as inputs with internal pull-up resistors enabled
+  pinMode(incButtonPin, INPUT_PULLUP);
+  pinMode(decButtonPin, INPUT_PULLUP);
   
   digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
   digitalWrite(LED2Pin, 0); 
@@ -152,7 +148,7 @@ byte getThermTemp()
 }
 
 // Description:		CTC Interrupt Service Routine for Timer 1
-//                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average
+//                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average to smooth out irregularities in the data
 //                      2. Increments the total cycle time and state time every second
 //                      3. Calculates the current oven temperature every second and displays the current oven temperature in the serial monitor
 //                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR)
@@ -210,13 +206,15 @@ int readButtons(int value, int minimum, int maximum)
     if(digitalRead(incButtonPin) == 0 && value < maximum)
     {
       value++;                                                                // Increment parameter if increment button is pressed
+      Serial.print(value);                                                    // Display parameter in serial monitor
+      Serial.print("\r");                                                     // Return to start of line in serial monitor
     }
     if(digitalRead(decButtonPin) == 0 && value > minimum)
     {
       value--;                                                                // Decrement parameter if decrement button is pressed
+      Serial.print(value);                                                    // Display parameter in serial monitor
+      Serial.print("\r");                                                     // Return to start of line in serial monitor
     }
-    Serial.print(value);                                                      // Display parameter in serial monitor
-    Serial.print("\r");                                                       // Return to start of line in serial monitor
     delay(BUTTON_DELAY);
   }
   while(digitalRead(setButtonPin) == 0);                                      // Wait for set button to be released
@@ -274,8 +272,6 @@ void loop()
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
       digitalWrite(LED1Pin, 1);                                               // Turn on LED1
-      Serial.println();
-      Serial.println("Starting reflow process");
 
       tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);                          // Play start melody
       delay(SHORT_BEEP);
@@ -299,6 +295,7 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        delay(DEBOUNCE_DELAY);
         state = OFF;
         break;
       }
@@ -330,6 +327,7 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        delay(DEBOUNCE_DELAY);
         state = OFF;
         break;
       }
@@ -352,13 +350,13 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        delay(DEBOUNCE_DELAY);
         state = OFF;
         break;
       }
       if(ovenTemp > reflowTemp - REFLOW_TEMP_OFFSET)                          // Turn off oven prematurely to account for embodied heat
       {
         PWMValue = 0;
-        digitalWrite(LED2Pin, 0);
       }
       if(ovenTemp > reflowTemp)                                               // Enter reflow state once reflow temperature has been reached
       {
@@ -379,6 +377,7 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        delay(DEBOUNCE_DELAY);
         state = OFF;
         break;
       }
