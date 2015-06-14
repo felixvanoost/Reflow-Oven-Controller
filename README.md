@@ -3,7 +3,7 @@ This program is free software: you can redistribute it and/or modify it under th
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 # Reflow Oven Controller
-An Arduino-based project to convert a standard toaster oven into a reflow soldering oven for PCB assembly.
+A project to convert a standard toaster oven into a reflow soldering oven for PCB assembly using an Arduino and Python.
 
 ----------
 Context
@@ -22,21 +22,35 @@ The specific thermal profile followed by the microcontroller will depend on the 
 Overview
 ----------
 
-For this project, an Arduino will monitor and control an off-the-shelf toaster oven to follow a user-defined thermal profile. The required hardware, consisting of the following main functional blocks, will be mounted on an Arduino Proto Shield:
+This project consists of two main components:
 
-- A thermocouple to measure the temperature inside the oven
-- An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino
-- A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading
-- Pushbuttons to allow the user to set the desired thermal profile parameters and start / stop the reflow process
-- LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete
+- An Arduino, which monitors and controls an off-the-shelf toaster oven to follow a user-defined thermal profile.
+- A Python script, which provides a text-based UI and displays a live plot of the oven temperature data on a computer.
 
-A solid-state relay is also required, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that a suitable oven has been purchased and an SSR has already been installed within - there are a number of very good tutorials describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
+Four thermal profile parameters are user-configurable:
 
-The software for this project will be kept simple to make future improvements and modifications for different hardware setups straightforward. A finite state machine will be implemented in C, with a state corresponding to each stage in the reflow thermal profile. To control temperature, the code will simply decide whether to turn the oven on and off in order to reach and maintain the desired temperature at each stage of the reflow process (PID control may be integrated in the future).
+- Soak temperature
+- Soak time
+- Reflow temperature
+- Reflow time
+
+The Python script prompts the user to enter the desired values for each parameter, checks the input is within a pre-determined valid range, then sends the values to the Arduino via USB. Once the reflow cycle has been started, it receives oven temperature readings from the Arduino every second and plots these for the user in real-time.
+
+The Arduino implements a finite state machine with a state corresponding to each stage in the reflow cycle. It controls the toaster oven using time-proportional control - a slower form of PWM. User feedback is provided via a set of LEDs and a buzzer.
 
 ----------
 Required Hardware
 ----------
+
+The hardware is split into the following main functional blocks:
+
+- A thermocouple to measure the temperature inside the oven
+- An amplifier circuit to amplify the voltage across the thermocouple to levels readable by the Arduino
+- A temperature sensor to enable the Arduino to perform cold-junction compensation on the thermocouple temperature reading
+- Pushbuttons to allow the user to start / stop the reflow process and implement any additional functionality
+- LEDs and a buzzer to provide user feedback on the current stage of reflow and alert the user when the process is complete
+
+The following components are required:
 
 - Arduino Uno or equivalent
 - Arduino Proto Shield or equivalent
@@ -57,13 +71,15 @@ Required Hardware
 
 The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the LMC7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
 
-I am using an [OSEPP Proto Shield](http://osepp.com/products/shield-arduino-compatible/proto-shield/) for this project (functionally identical to the [Sparkfun ProtoShield Kit](https://www.sparkfun.com/products/7914)), which comes pre-installed with a pushbutton and two LEDs. This reduces the number of components that need to be soldered to the board and simplifies the layout and assembly process.
+The hardware is mounted on an [OSEPP Proto Shield](http://osepp.com/products/shield-arduino-compatible/proto-shield/) (functionally identical to the [Sparkfun ProtoShield Kit](https://www.sparkfun.com/products/7914)), which comes pre-installed with a pushbutton and two LEDs. This reduces the number of components that need to be soldered to the board and simplifies the layout and assembly process.
+
+Please note that a solid-state relay is also required, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that a suitable oven has been purchased and an SSR has already been installed within - there are a number of very good tutorials describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
 
 ----------
 Required Software
 ----------
 
 - Arduino IDE (latest version preferred)
-- Terminal emulation software
+- Python 3.4.2
 
-Any terminal emulator of your choice should be suitable for this project. I will be using HyperTerminal, which is a far more advanced version of the Arduino serial monitor. The included Arduino serial monitor is designed mainly for debugging purposes and thus lacks many of the features needed to present and format data intuitively for user input / feedback purposes.
+I am using IDLE in [WinPython](http://winpython.github.io/) 3.4.3.3 to run the Python UI script.
