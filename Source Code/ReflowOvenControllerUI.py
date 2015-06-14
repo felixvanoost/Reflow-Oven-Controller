@@ -34,6 +34,7 @@ def getParameter(minimum, maximum):
         print("Error: outside range")
         return False
     ser.write(str(value).encode())                                                                      # Encode input as binary and send to Arduino
+    time.sleep(0.2)
     return True
 
 # Description
@@ -61,6 +62,9 @@ def on_close_figure(event):
 ser = serial.Serial("COM3", 9600)                                                                       # Configure and open serial port
 if(ser.isOpen() == True):
     print("Connection to controller established")
+else:
+    print("Error: connection to controller failed")
+time.sleep(1)
 
 print()
 print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "C - " + str(MAX_SOAK_TEMP) + "C):")            # Display prompt and acceptable range
@@ -74,18 +78,20 @@ while(getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME) != True):                      
 
 print()
 print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "C - " + str(MAX_REFLOW_TEMP) + "C):")      # Display prompt and acceptable range
-while(getReflowTemp(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) != True):                                         # Obtain and transmit desired reflow temperature
-    getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
+while(getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) != True):                                          # Obtain and transmit desired reflow temperature
+   getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
 
 print()
 print("Enter reflow time (" + str(MIN_REFLOW_TIME) + "s - " + str(MAX_REFLOW_TIME) + "s):")             # Display prompt and acceptable range
-while(getParameters(MIN_REFLOW_TIME, MAX_REFLOW_TIME) != True):                                         # Obtain and transmit desired reflow time
-    getParameters(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
+while(getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) != True):                                          # Obtain and transmit desired reflow time
+    getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
 
 print()
 print("Press 'set' button to begin reflow cycle")
 while True:                                                                                             # Wait for start command to be received before showing plot
-    if(ser.readline() == 'START'):
+    if(ser.readline() == "START\n"):
+        print()
+        print("Starting reflow cycle")
         break
 
 data_gen.t = -1
