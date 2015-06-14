@@ -20,76 +20,20 @@ MAX_SOAK_TIME = 90
 MAX_REFLOW_TEMP = 240
 MAX_REFLOW_TIME = 60
 
-# Description:      Prompts user to enter a desired soak temperature, checks for validity, and sends the input to the controller if valid
-# Parameters:       -
+# Description:      Prompts user to enter the desired value for each thermal profile parameter, checks for validity, and sends the input to the controller if valid
+# Parameters:       minimum - Minimum acceptable value
+#                   maximum - Maximum acceptable value
 # Returns:          True if the input is valid and successfully sent, False otherwise
-def getSoakTemp():
-    print()
-    print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "C - " + str(MAX_SOAK_TEMP) + "C):")        # Display prompt and acceptable parameter range
+def getParameter(minimum, maximum):
     try:
         value = int(input("- "))                                                                        # Read user input
     except(ValueError):                                                                                 # Determine whether input is a number
         print("Error: not a number")
         return False
-    if(value < MIN_SOAK_TEMP or value > MAX_SOAK_TEMP):                                                 # Determine whether input is outside range
+    if(value < minimum or value > maximum):                                                             # Determine whether input is within range
         print("Error: outside range")
         return False
-    value = str.encode(str(value))                                                                      # Encode input as binary for Arduino
-    ser.write(value)
-    return True
-
-# Description:      Prompts user to enter a desired soak time, checks for validity, and sends the input to the controller if valid
-# Parameters:       -
-# Returns:          True if the input is valid and successfully sent, False otherwise
-def getSoakTime():
-    print()
-    print("Enter soak time (" + str(MIN_SOAK_TIME) + "s - " + str(MAX_SOAK_TIME) + "s):")               # Display prompt and acceptable parameter range
-    try:
-        value = int(input("- "))                                                                        # Read user input
-    except(ValueError):                                                                                 # Determine whether input is a number
-        print("Error: not a number")
-        return False
-    if(value < MIN_SOAK_TIME or value > MAX_SOAK_TIME):                                                 # Determine whether input is outside range
-        print("Error: outside range")
-        return False
-    value = str.encode(str(value))                                                                      # Encode input as binary for Arduino
-    ser.write(value)
-    return True
-
-# Description:      Prompts user to enter a desired reflow temperature, checks for validity, and sends the input to the controller if valid
-# Parameters:       -
-# Returns:          True if the input is valid and successfully sent, False otherwise
-def getReflowTemp():
-    print()
-    print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "C - " + str(MAX_REFLOW_TEMP) + "C):")  # Display prompt and acceptable parameter range
-    try:
-        value = int(input("- "))                                                                        # Read user input
-    except(ValueError):                                                                                 # Determine whether input is a number
-        print("Error: not a number")
-        return False
-    if(value < MIN_REFLOW_TEMP or value > MAX_REFLOW_TEMP):                                             # Determine whether input is outside range
-        print("Error: outside range")
-        return False
-    value = str.encode(str(value))                                                                      # Encode input as binary for Arduino
-    ser.write(value)
-    return True
-
-# Description:      Prompts user to enter a desired reflow time, checks for validity, and sends the input to the controller if valid
-# Parameters:       -
-# Returns:          True if the input is valid and successfully sent, False otherwise
-def getReflowTime():
-    print()
-    print("Enter reflow time (" + str(MIN_REFLOW_TIME) + "s - " + str(MAX_REFLOW_TIME) + "s):")         # Display prompt and acceptable parameter range
-    try:
-        value = int(input("- "))                                                                        # Read user input
-    except(ValueError):                                                                                 # Determine whether input is a number
-        print("Error: not a number")
-        return False
-    if(value < MIN_REFLOW_TIME or value > MAX_REFLOW_TIME):                                             # Determine whether input is outside range
-        print("Error: outside range")
-        return False
-    value = str.encode(str(value))                                                                      # Encode input as binary for Arduino
-    ser.write(value)
+    ser.write(str(value).encode())                                                                      # Encode input as binary and send to Arduino
     return True
 
 # Description
@@ -118,14 +62,25 @@ ser = serial.Serial("COM3", 9600)                                               
 if(ser.isOpen() == True):
     print("Connection to controller established")
 
-while(getSoakTemp() != True):                                                                           # Obtain thermal profile parameters
-    getSoakTemp()
-while(getSoakTime() != True):
-    getSoakTime()
-while(getReflowTemp() != True):
-    getReflowTemp()
-while(getReflowTime() != True):
-    getReflowTime()
+print()
+print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "C - " + str(MAX_SOAK_TEMP) + "C):")            # Display prompt and acceptable range
+while(getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP) != True):                                              # Obtain and transmit desired soak temperature
+    getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP)
+
+print()
+print("Enter soak time (" + str(MIN_SOAK_TIME) + "s - " + str(MAX_SOAK_TIME) + "s):")                   # Display prompt and acceptable range
+while(getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME) != True):                                              # Obtain and transmit desired soak time
+    getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME)
+
+print()
+print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "C - " + str(MAX_REFLOW_TEMP) + "C):")      # Display prompt and acceptable range
+while(getReflowTemp(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) != True):                                         # Obtain and transmit desired reflow temperature
+    getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
+
+print()
+print("Enter reflow time (" + str(MIN_REFLOW_TIME) + "s - " + str(MAX_REFLOW_TIME) + "s):")             # Display prompt and acceptable range
+while(getParameters(MIN_REFLOW_TIME, MAX_REFLOW_TIME) != True):                                         # Obtain and transmit desired reflow time
+    getParameters(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
 
 print()
 print("Press 'set' button to begin reflow cycle")
