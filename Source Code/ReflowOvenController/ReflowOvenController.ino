@@ -11,8 +11,8 @@
 #define junctionPin              A1                                           // Cold junction input pin (A1)
 
 #define setButtonPin             2                                            // Pushbutton input pins (D2-D4)
-#define incButtonPin             3
-#define decButtonPin             4
+#define Button1Pin               3
+#define Button2Pin               4
 #define ovenPin                  5                                            // Oven SSR pin (D5)
 #define buzzerPin                6                                            // Buzzer output pin (D6)
 #define LED1Pin                  7                                            // LED output pins (D7-D8)
@@ -27,16 +27,6 @@
 #define SHORT_BEEP               100                                          // Buzzer beep lengths (ms)
 #define MEDIUM_BEEP              400
 #define LONG_BEEP                3000
-
-#define MIN_SOAK_TEMP            120                                          // Minimum values for thermal profile parameters
-#define MIN_SOAK_TIME            30
-#define MIN_REFLOW_TEMP          200
-#define MIN_REFLOW_TIME          15
-
-#define MAX_SOAK_TEMP            180                                          // Maximum values for thermal profile parameters
-#define MAX_SOAK_TIME            90
-#define MAX_REFLOW_TEMP          240
-#define MAX_REFLOW_TIME          60
 
 #define OFF                      0                                            // Finite state machine states
 #define RAMP_TO_SOAK             1
@@ -58,10 +48,10 @@
 
 byte state = OFF;
 
-byte soakTemp = 150;                                                          // Declare thermal profile parameter variables and initialise to default values
-byte soakTime = 60;
-byte reflowTemp = 220;
-byte reflowTime = 45;
+byte soakTemp;                                                                // Declare thermal profile parameter variables
+byte soakTime;
+byte reflowTemp;
+byte reflowTime;
 
 int ovenTempSum = 0;                                                          // Declare temperature variables
 int ovenTemp = 0;
@@ -106,8 +96,12 @@ void setup()
   pinMode(thermPin, INPUT);                                                   // Declare thermocouple and temperature sensor pins as inputs
   pinMode(junctionPin, INPUT);
   pinMode(setButtonPin, INPUT_PULLUP);                                        // Declare pushbutton pins as inputs with internal pull-up resistors enabled
-  pinMode(incButtonPin, INPUT_PULLUP);
-  pinMode(decButtonPin, INPUT_PULLUP);
+  pinMode(Button1Pin, INPUT_PULLUP);
+  pinMode(Button2Pin, INPUT_PULLUP);
+  pinMode(ovenPin, OUTPUT);                                                   // Declare oven, buzzer, and LED pins as outputs
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(LED1Pin, OUTPUT);
+  pinMode(LED2Pin, OUTPUT);
   
   digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
   digitalWrite(LED2Pin, 0); 
@@ -169,9 +163,10 @@ ISR(TIMER1_COMPA_vect)
     stateTime++;
   
     ovenTemp = ovenTempSum / READING_FREQUENCY;                               // Calculate current oven temperature by finding the average value of previously gathered temperature readings
-    Serial.println(ovenTemp);                                                 // Display current oven temperature
+    Serial.print(ovenTemp);                                                   // Display current oven temperature
+    Serial.print("\n");
     
-    interruptCount = 0;                                                       // Reset interrupt count and sum of oven temperature readings
+    interruptCount = 0;                                                       // Reset interrupt count and sum of oven temperatu"re readings
     ovenTempSum = 0;
   }
   digitalWrite(ovenPin, interruptCount > PWMValue ? 0:1);                     // Turn off oven if interruptCount > PWMValue or turn on if interruptCount < PWMValue
@@ -194,65 +189,24 @@ void initialiseTimer1()
   sei();                                                                      // Enable global interrupts
 }
 
-// Description:		Reads the status of the pushbuttons and increments / decrements the given value within the specified minimum / maximum ranges until the set button is pressed
-// Parameters:		value - Initial value of the thermal profile parameter currently being set
-//                      minimum - Minimum acceptable value for specified parameter
-//                      maximum - Maximum acceptable value for specified parameter
-// Returns:	        The final thermal profile parameter value entered by the user
-int readButtons(int value, int minimum, int maximum)
-{
-  while(digitalRead(setButtonPin) != 0)
-  {
-    if(digitalRead(incButtonPin) == 0 && value < maximum)
-    {
-      value++;                                                                // Increment parameter if increment button is pressed
-      Serial.print(value);                                                    // Display parameter in serial monitor
-      Serial.print("\r");                                                     // Return to start of line in serial monitor
-    }
-    if(digitalRead(decButtonPin) == 0 && value > minimum)
-    {
-      value--;                                                                // Decrement parameter if decrement button is pressed
-      Serial.print(value);                                                    // Display parameter in serial monitor
-      Serial.print("\r");                                                     // Return to start of line in serial monitor
-    }
-    delay(BUTTON_DELAY);
-  }
-  while(digitalRead(setButtonPin) == 0);                                      // Wait for set button to be released
-  delay(DEBOUNCE_DELAY);
-  
-  return value;
-}
-
-// Description:		Allows user to set the four thermal profile parameters using pusbuttons and provides user feedback via the buzzer
+// Description:		Receives one of the four thermal profile parameters from Python via the serial port and provides user feedback via the buzzer
 // Parameters:		-
-// Returns:		-
-void setParameters()
+// Returns:		The value of the received thermal profile parameter
+int receiveParameter()
 {
-  Serial.write("\x1b[2J");                                                    // ANSI sequence to clear screen in HyperTerminal
-  Serial.println("Soak Temperature:");
-  soakTemp = readButtons(soakTemp, MIN_SOAK_TEMP, MAX_SOAK_TEMP);             // Set soak temperature
-  Serial.println(soakTemp);                                                   // Display entered soak temperature
-  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
-
-  Serial.println("Soak Time:");
-  soakTime = readButtons(soakTime, MIN_SOAK_TIME, MAX_SOAK_TIME);             // Set soak time
-  Serial.println(soakTime);                                                   // Display entered soak time
-  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
-
-  Serial.println("Reflow Temperature:");
-  reflowTemp = readButtons(reflowTemp, MIN_REFLOW_TEMP, MAX_REFLOW_TEMP);     // Set reflow temperature
-  Serial.println(reflowTemp);                                                 // Display entered reflow temperature
-  tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
-
-  Serial.println("Reflow Time:");
-  reflowTime = readButtons(reflowTime, MIN_REFLOW_TIME, MAX_REFLOW_TIME);     // Set reflow time
-  Serial.println(reflowTime);                                                 // Display entered reflow time
+  int value = 0;
+  
+  while(value == 0)
+  {
+    if(Serial.available() > 0)                                                // Check if data has already arrived in the serial receive buffer
+    {
+      value = Serial.parseInt();                                              // Read data from the buffer and convert to an integer
+      Serial.println(value);                                                  // Echo received value to Python to check correct data has been received
+    }
+  }
   tone(buzzerPin, HIGH_BUZZER_FREQ, SHORT_BEEP);
   
-  Serial.println();
-  Serial.println("Press 'set' to begin reflow process");
-
-  return;
+  return byte(value);
 }
 
 void loop() 
@@ -266,12 +220,16 @@ void loop()
       cycleTime = 0;                                                          // Reset cycle time
       PWMValue = 0;                                                           // Turn off oven
       digitalWrite(LED1Pin, 0);
-      setParameters();
+      soakTemp = receiveParameter();                                          // Obtain soak temperature
+      soakTime = receiveParameter();                                          // Obtain soak time
+      reflowTemp = receiveParameter();                                        // Obtain reflow temperature
+      reflowTime = receiveParameter();                                        // Obtain reflow time
       
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
-      delay(DEBOUNCE_DELAY);
+      delay(BUTTON_DELAY);
       digitalWrite(LED1Pin, 1);                                               // Turn on LED1
+      Serial.print("Start\n");                                                // Send 'start' flag to Python
 
       tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);                          // Play start melody
       delay(SHORT_BEEP);
@@ -281,9 +239,6 @@ void loop()
      
       initialiseTimer1();
       stateTime = 0;                                                          // Reset state time
-      Serial.println();                                                       // Display new state
-      Serial.println("RAMP TO SOAK");
-      Serial.println();
       state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
       break;
     }
@@ -295,12 +250,14 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
-        delay(DEBOUNCE_DELAY);
+        delay(BUTTON_DELAY);
+        Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         state = OFF;
         break;
       }
       if(stateTime == 30 && ovenTemp < ERROR_TEMP)                            // Stop reflow process if oven does not reach the specified error temperature in the first 30s (thermocouple error)
       {
+        Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         state = OFF;
         break;
       }
@@ -311,9 +268,6 @@ void loop()
       if(ovenTemp > soakTemp)                                                 // Enter soak state once soak temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
-        Serial.println();                                                     // Display new state
-        Serial.println("SOAK");
-        Serial.println();
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = SOAK;
       }
@@ -327,16 +281,14 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
-        delay(DEBOUNCE_DELAY);
+        delay(BUTTON_DELAY);
+        Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         state = OFF;
         break;
       }
       if(stateTime == soakTime)                                               // Enter ramp to reflow state once soak time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
-        Serial.println();                                                     // Display new state
-        Serial.println("RAMP TO REFLOW");
-        Serial.println();
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = RAMP_TO_REFLOW;
       }
@@ -350,7 +302,8 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
-        delay(DEBOUNCE_DELAY);
+        delay(BUTTON_DELAY);
+        Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         state = OFF;
         break;
       }
@@ -361,9 +314,6 @@ void loop()
       if(ovenTemp > reflowTemp)                                               // Enter reflow state once reflow temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
-        Serial.println();                                                     // Display new state
-        Serial.println("REFLOW");
-        Serial.println();
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = REFLOW;
       }
@@ -377,7 +327,8 @@ void loop()
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
-        delay(DEBOUNCE_DELAY);
+        delay(BUTTON_DELAY);
+        Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         state = OFF;
         break;
       }
@@ -385,9 +336,6 @@ void loop()
       {
         stateTime = 0;                                                        // Reset state time
         PWMValue = 0;                                                         // Turn oven off
-        Serial.println();                                                     // Display new state
-        Serial.println("COOLING");
-        Serial.println();
         Serial.println("Please open oven door");
         Serial.println("Press 'set' to confirm door has been opened");
         
@@ -410,8 +358,7 @@ void loop()
         TCCR1B = 0;                                                           // Stop Timer 1
         
         digitalWrite(LED1Pin, 0);                                             // Turn off LED1
-        Serial.println();
-        Serial.println("Reflow cycle complete");
+        Serial.print("Complete\n");                                           // Send 'complete' flag to Python
         
         tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);                       // Play end melody
         delay(SHORT_BEEP);
@@ -419,14 +366,7 @@ void loop()
         delay(SHORT_BEEP);
         tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);
         
-        Serial.print("Total cycle time: ");                                   // Display total cycle time
-        Serial.print(cycleTime);
-        Serial.print(" seconds");
-        Serial.println();
-        Serial.println("Press 'set' to begin a new cycle");
-        
-        while(digitalRead(setButtonPin) != 0);                                // Wait for set button to be pressed
-        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
+        Serial.print(cycleTime);                                              // Send total reflow cycle time to Python
         state = OFF;                                                          // Return to off state
       }
       break;
