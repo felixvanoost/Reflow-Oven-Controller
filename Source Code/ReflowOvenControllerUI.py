@@ -20,21 +20,24 @@ MAX_SOAK_TIME = 90
 MAX_REFLOW_TEMP = 240
 MAX_REFLOW_TIME = 60
 
-# Description:      Prompts user to enter the desired value for each thermal profile parameter, checks for validity, and sends the input to the controller if valid
+# Description:      1. Prompts user to enter the desired value for each thermal profile parameter and checks user input for validity (within specfied range)
+#                   3. Sends the value to the controller and checks to ensure that the controller has received the correct data
 # Parameters:       minimum - Minimum acceptable value
 #                   maximum - Maximum acceptable value
-# Returns:          True if the input is valid and successfully sent, False otherwise
+# Returns:          True if the input is valid and successfully received by controller, False otherwise
 def getParameter(minimum, maximum):
     try:
         value = int(input("- "))                                                                        # Read user input
     except(ValueError):                                                                                 # Determine whether input is a number
         print("Error: not a number")
         return False
-    if(value < minimum or value > maximum):                                                             # Determine whether input is within range
+    if(value < minimum or value > maximum):                                                             # Determine whether input is within acceptable range
         print("Error: outside range")
         return False
-    ser.write(str(value).encode())                                                                      # Encode input as binary and send to Arduino
-    time.sleep(0.2)
+    ser.write(str(value).encode())                                                                      # Encode input as binary and send to controller
+    time.sleep(0.1)
+    if(bytes(ser.readline()) != value)                                                                  # Check controller has received correct data
+        return False
     return True
 
 # Description
@@ -42,7 +45,7 @@ def data_gen():
     t = data_gen.t
     while True:
         t+=1
-        val = ser.readline()                                                                            # Obtain temperature readings from serial port
+        val = bytes(ser.readline())                                                                     # Obtain temperature readings from serial port
         yield t, val
 
 # Description
@@ -55,7 +58,7 @@ def run(data):
     return line,
 
 # Description
-def on_close_figure(event):
+def onCloseFigure(event):
     sys.exit(0)
 
 # Main code
@@ -88,15 +91,15 @@ while(getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) != True):                  
 
 print()
 print("Press 'set' button to begin reflow cycle")
-while True:                                                                                             # Wait for start command to be received before showing plot
-    if(ser.readline() == "START\n"):
+while True:                                                                                             # Wait for start command to be received before ploting graph
+    if(ser.readline() == b"Start\n"):
         print()
         print("Starting reflow cycle")
         break
 
-data_gen.t = -1
+data_gen.t = -1                                                                                         # Plot temperature graph
 fig = plt.figure()
-fig.canvas.mpl_connect('close_event', on_close_figure)
+fig.canvas.mpl_connect('close_event', onCloseFigure)
 ax = fig.add_subplot(111)
 line, = ax.plot([], [], lw = 2)
 ax.set_ylim(0,255)                                                                                      # Set y-axis scale from 0-255C
