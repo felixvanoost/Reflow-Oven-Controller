@@ -34,13 +34,10 @@ def getParameter(minimum, maximum):
     if(value < minimum or value > maximum):                                                             # Determine whether input is within acceptable range
         print("Error: outside range")
         return False
-    ser.write(str(value).encode())                                                                      # Encode input as binary and send to controller
+    ser.write(str(value).encode())                                                                      # Encode input as binary data and send to controller
     time.sleep(0.1)
-    if(bytes(ser.readline()) != value)                                                                  # Check controller has received correct data
+    if(bytes(ser.readline()) != value):                                                                 # Check controller has received correct data
         return False
-    return True
-    ser.write(str(value).encode())                                                                      # Encode input as binary and send to Arduino
-    time.sleep(0.2)
     return value
 
 # Description
@@ -65,31 +62,33 @@ def onCloseFigure(event):
     sys.exit(0)
 
 # Main code
-ser = serial.Serial("COM3", 9600)                                                                       # Configure and open serial port
-if(ser.isOpen() == True):
-    print("Connection to controller established")
-else:
+try:
+    ser = serial.Serial("COM3", 9600)                                                                   # Configure and open serial port
+    if(ser.isOpen() == True):
+        print("Connection to controller established")
+except(IOError):                                                                                        # Determine whether port has been successfully opened
     print("Error: connection to controller failed")
+    quit()                                                                                              # Exit script if port could not be opened
 time.sleep(1)
 
 print()
 print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "C - " + str(MAX_SOAK_TEMP) + "C):")            # Display prompt and acceptable range
-while(getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP) != True):                                              # Obtain and transmit desired soak temperature
+while(getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP) == False):                                             # Obtain and transmit desired soak temperature
     soakTemp = getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP)
 
 print()
 print("Enter soak time (" + str(MIN_SOAK_TIME) + "s - " + str(MAX_SOAK_TIME) + "s):")                   # Display prompt and acceptable range
-while(getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME) != True):                                              # Obtain and transmit desired soak time
+while(getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME) == False):                                             # Obtain and transmit desired soak time
     soakTime = getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME)
 
 print()
 print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "C - " + str(MAX_REFLOW_TEMP) + "C):")      # Display prompt and acceptable range
-while(getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) != True):                                          # Obtain and transmit desired reflow temperature
+while(getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) == False):                                         # Obtain and transmit desired reflow temperature
    reflowTemp = getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
 
 print()
 print("Enter reflow time (" + str(MIN_REFLOW_TIME) + "s - " + str(MAX_REFLOW_TIME) + "s):")             # Display prompt and acceptable range
-while(getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) != True):                                          # Obtain and transmit desired reflow time
+while(getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) == False):                                         # Obtain and transmit desired reflow time
     reflowTime = getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
 
 print()
@@ -99,6 +98,8 @@ while True:                                                                     
         print()
         print("Starting reflow cycle")
         break
+
+#ser.Close()
 
 data_gen.t = -1                                                                                         # Plot temperature graph
 fig = plt.figure()
