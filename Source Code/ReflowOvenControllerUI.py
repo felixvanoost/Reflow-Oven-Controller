@@ -20,8 +20,8 @@ MAX_SOAK_TIME = 90
 MAX_REFLOW_TEMP = 240
 MAX_REFLOW_TIME = 60
 
-# Description:      1. Prompts user to enter the desired value for each thermal profile parameter and checks user input for validity (within specfied range)
-#                   3. Sends the value to the controller and checks to ensure that the controller has received the correct data
+# Description:      1. Prompts user to enter the desired value for a given thermal profile parameter and checks user input for validity (within specfied range)
+#                   2. Sends the value to the controller and checks to ensure that the controller has received the correct data
 # Parameters:       minimum - Minimum acceptable value
 #                   maximum - Maximum acceptable value
 # Returns:          The reflow parameter value if valid and successfully sent, False otherwise
@@ -36,7 +36,8 @@ def getParameter(minimum, maximum):
         return False
     ser.write(str(value).encode())                                                                      # Encode input as binary data and send to controller
     time.sleep(0.1)
-    if(bytes(ser.readline()) != value):                                                                 # Check controller has received correct data
+    if(int(ser.readline()) != value):                                                                   # Check controller has received correct data
+        print("Error: data not successfully received by controller")
         return False
     return value
 
@@ -107,7 +108,7 @@ fig.canvas.mpl_connect('close_event', onCloseFigure)
 ax = fig.add_subplot(111)
 line, = ax.plot([], [], lw = 2)
 ax.set_ylim(0,255)                                                                                      # Set y-axis scale from 0-255C
-ax.set_xlim(0,350)                                                                                      # Set x-axis scale from 0-350s
+ax.set_xlim(0,360)                                                                                      # Set x-axis scale from 0-360s
 ax.grid()
 xdata, ydata = [], []
 
