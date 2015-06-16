@@ -24,8 +24,8 @@ Overview
 
 This project consists of two main components:
 
-- An Arduino, which monitors and controls an off-the-shelf toaster oven to follow a user-defined thermal profile.
-- A Python script, which provides a text-based UI and displays a live plot of the oven temperature data on a computer.
+- An Arduino Uno to monitor and control almost any off-the-shelf toaster oven to follow a user-defined thermal profile.
+- A Python script to provide a text-based UI and display a live plot of the oven temperature data on a computer.
 
 Four thermal profile parameters are user-configurable:
 
@@ -34,9 +34,9 @@ Four thermal profile parameters are user-configurable:
 - Reflow temperature
 - Reflow time
 
-The Python script prompts the user to enter the desired values for each parameter, checks the input is within a pre-determined valid range, then sends the values to the Arduino via USB. Once the reflow cycle has been started, it receives oven temperature readings from the Arduino every second and plots these for the user in real-time.
+The Python script prompts the user to enter the desired values for each parameter, checks the input is within a pre-determined valid range, then sends the values to the Arduino via USB and checks that they are properly received. Once the reflow cycle has been started, it receives an oven temperature reading from the Arduino every second and plots this on a graph for the user in real-time.
 
-The Arduino implements a finite state machine with a state corresponding to each stage in the reflow cycle. It controls the toaster oven using time-proportional control - a slower form of PWM. User feedback is provided via a set of LEDs and a buzzer.
+The Arduino implements a finite state machine, with a state corresponding to each stage in the reflow cycle. It controls the toaster oven using time-proportional control - a slower form of PWM. User feedback is provided via a set of LEDs and a buzzer.
 
 ----------
 Required Hardware
@@ -71,7 +71,7 @@ The following components are required:
 
 The OP07 was chosen for its low input voltage characteristics (as the thermocouple produces an output voltage on the order of microvolts), although any op-amp with similar specifications will work just fine. The same is true for the LMC7660 - any voltage converter providing a +/-5V output from a 5V input can be used.
 
-The hardware is mounted on an [OSEPP Proto Shield](http://osepp.com/products/shield-arduino-compatible/proto-shield/) (functionally identical to the [Sparkfun ProtoShield Kit](https://www.sparkfun.com/products/7914)), which comes pre-installed with a pushbutton and two LEDs. This reduces the number of components that need to be soldered to the board and simplifies the layout and assembly process.
+I have mounted the hardware on an [OSEPP Proto Shield](http://osepp.com/products/shield-arduino-compatible/proto-shield/) (functionally identical to the [Sparkfun ProtoShield Kit](https://www.sparkfun.com/products/7914)), which comes pre-installed with a pushbutton and two LEDs. This reduces the number of components that need to be soldered to the board and simplifies the layout and assembly process.
 
 Please note that a solid-state relay is also required, which enables the Arduino to switch power to the oven on and off (thereby allowing it to control the temperature). For the scope of this project, I will assume that a suitable oven has been purchased and an SSR has already been installed within - there are a number of very good tutorials describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
 
