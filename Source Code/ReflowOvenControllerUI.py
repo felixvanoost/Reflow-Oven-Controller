@@ -23,7 +23,7 @@ MAX_REFLOW_TIME = 60
 # Description:      Prompts user to enter the desired value for each thermal profile parameter, checks for validity, and sends the input to the controller if valid
 # Parameters:       minimum - Minimum acceptable value
 #                   maximum - Maximum acceptable value
-# Returns:          True if the input is valid and successfully sent, False otherwise
+# Returns:          The reflow parameter value if valid and successfully sent, False otherwise
 def getParameter(minimum, maximum):
     try:
         value = int(input("- "))                                                                        # Read user input
@@ -35,7 +35,7 @@ def getParameter(minimum, maximum):
         return False
     ser.write(str(value).encode())                                                                      # Encode input as binary and send to Arduino
     time.sleep(0.2)
-    return True
+    return value
 
 # Description
 def data_gen():
@@ -69,22 +69,22 @@ time.sleep(1)
 print()
 print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "C - " + str(MAX_SOAK_TEMP) + "C):")            # Display prompt and acceptable range
 while(getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP) != True):                                              # Obtain and transmit desired soak temperature
-    getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP)
+    soakTemp = getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP)
 
 print()
 print("Enter soak time (" + str(MIN_SOAK_TIME) + "s - " + str(MAX_SOAK_TIME) + "s):")                   # Display prompt and acceptable range
 while(getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME) != True):                                              # Obtain and transmit desired soak time
-    getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME)
+    soakTime = getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME)
 
 print()
 print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "C - " + str(MAX_REFLOW_TEMP) + "C):")      # Display prompt and acceptable range
 while(getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) != True):                                          # Obtain and transmit desired reflow temperature
-   getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
+   reflowTemp = getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
 
 print()
 print("Enter reflow time (" + str(MIN_REFLOW_TIME) + "s - " + str(MAX_REFLOW_TIME) + "s):")             # Display prompt and acceptable range
 while(getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) != True):                                          # Obtain and transmit desired reflow time
-    getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
+    reflowTime = getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
 
 print()
 print("Press 'set' button to begin reflow cycle")
