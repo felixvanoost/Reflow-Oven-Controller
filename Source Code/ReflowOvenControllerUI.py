@@ -35,33 +35,38 @@ def getParameter(minimum, maximum):
         print("Error: outside range")
         return False
     ser.write(str(value).encode())                                                                      # Encode input as binary data and send to controller
-    time.sleep(0.1)
     if(int(ser.readline()) != value):                                                                   # Check controller has received correct data
         print("Error: data not successfully received by controller")
         return False
     return value
 
-# Description
+# Description:      Generates data for the temperature graph by obtaining readings from the controller through the serial port
+# Parameters:       -
+# Yields:           The latest reading obtained from the controller and a relative time index for when it was received (1s interval)
 def data_gen():
     t = data_gen.t
     while True:
-        t+=1
-        val = bytes(ser.readline())                                                                     # Obtain temperature readings from serial port
-        yield t, val
+        t += 1
+        value = bytes(ser.readline())                                                                   # Obtain temperature readings from serial port
+        yield t, value
 
-# Description
+# Description:
 def run(data):
-    t, y = data                                                                                         # Plot data
+    t, y = data
     if t > -1:
         xdata.append(t)
         ydata.append(y)
         line.set_data(xdata, ydata)
     return line,
 
-# Description
-def onCloseFigure(event):
-    sys.exit(0)
+# Description:      Exits the Python script
+# Parameters:       event -
+# Returns:          -
+def handleClose(event):
+    quit()
+    #sys.exit(0)
 
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 # Main code
 try:
     ser = serial.Serial("COM3", 9600)                                                                   # Configure and open serial port
@@ -69,7 +74,7 @@ try:
         print("Connection to controller established")
 except(IOError):                                                                                        # Determine whether port has been successfully opened
     print("Error: connection to controller failed")
-    quit()                                                                                              # Exit script if port could not be opened
+    quit()                                                                                              # Exit Python script if port could not be opened
 time.sleep(1)
 
 print()
@@ -102,13 +107,18 @@ while True:                                                                     
 
 #ser.Close()
 
-data_gen.t = -1                                                                                         # Plot temperature graph
-fig = plt.figure()
-fig.canvas.mpl_connect('close_event', onCloseFigure)
-ax = fig.add_subplot(111)
+data_gen.t = -1                                                                                         # Start data generator
+fig = plt.figure()                                                                                      # Initialise graph axes
+fig.canvas.mpl_connect('close_event', handleClose)                                                      # Exit Python script if graph window is closed
+ax = fig.add_subplot(1, 1, 1)                                                                           # Define a single subplot of grid size 1 x 1
+
+ax.set_title('Reflow Oven Controller vX.XX')                                                            # Format axes labels
+ax.set_ylabel('Temperature (C)')
+ax.set_xlabel('Cycle time (s)')
+
 line, = ax.plot([], [], lw = 2)
-ax.set_ylim(0,255)                                                                                      # Set y-axis scale from 0-255C
-ax.set_xlim(0,360)                                                                                      # Set x-axis scale from 0-360s
+ax.set_ylim(0,255)                                                                                      # Set y-axis scale from 0-255C (maximum controller temperature)
+ax.set_xlim(0,480)                                                                                      # Set x-axis scale from 0-480s (average total cycle time)
 ax.grid()
 xdata, ydata = [], []
 
