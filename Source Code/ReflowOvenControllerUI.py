@@ -38,6 +38,7 @@ def getParameter(minimum, maximum):
     if(int(ser.readline()) != value):                                                                   # Check controller has received correct data
         print("Error: data not successfully received by controller")
         return False
+    
     return value
 
 # Description:      Generates data for the temperature graph by obtaining readings from the controller through the serial port
@@ -47,8 +48,21 @@ def data_gen():
     t = data_gen.t
     while True:
         t += 1
-        value = bytes(ser.readline())                                                                   # Obtain temperature readings from serial port
-        yield t, value
+        value = ser.readline()                                                                          # Obtain temperature readings from serial port
+        if(value == b"Therm\n"):
+            print("Error: thermocouple not correctly placed in oven")
+            # Close plot and stop updating
+            quit()
+        if(value == b"Stop\n"):
+            print("Reflow process stopped by user")
+            # Close plot and stop updating
+            quit()
+        if(value == b"Complete\n"):
+            print("Reflow process complete")
+            # Close plot and stop updating
+            quit()
+
+        yield t, bytes(value)
 
 # Description:
 def run(data):
