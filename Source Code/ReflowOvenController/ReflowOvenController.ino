@@ -200,7 +200,7 @@ int receiveParameter()
     if(Serial.available() > 0)                                                // Check if data has already arrived in the serial receive buffer
     {
       value = Serial.parseInt();                                              // Read data from the buffer and convert to an integer
-      Serial.print(value);                                                    // Echo received value to Python to check correct data has been received
+      Serial.print(value);                                                    // Echo received value back to Python to check correct data has been received
       Serial.print("\n");
     }
   }
@@ -366,7 +366,7 @@ void loop()
         TCCR1B = 0;                                                           // Stop Timer 1
         
         digitalWrite(LED1Pin, 0);                                             // Turn off LED1
-        Serial.print("Complete\n");                                           // Send 'complete' flag to Python
+        Serial.print("Done\n");                                               // Send 'done' flag to Python
         
         tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);                       // Play end melody
         delay(SHORT_BEEP);
