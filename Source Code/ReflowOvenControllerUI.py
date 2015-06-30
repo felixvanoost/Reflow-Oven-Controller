@@ -3,9 +3,11 @@
 # This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
 # See the GNU General Public License for more details.
 
-# Reflow Oven Controller for the Arduino Uno
+# Reflow Oven Controller vX.XX
 
-import sys, time, serial
+import sys
+import serial
+from time import sleep
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -26,12 +28,12 @@ MAX_REFLOW_TIME = 60
 def exit():
     plt.close()
     ser.close()
-    quit()                                                                                              # Exit script
+    quit()
 
 # Description:
 def run(data):
     t, y = data
-    if t > -1:
+    if(t > -1):
         xdata.append(t)
         ydata.append(y)
         line.set_data(xdata, ydata)
@@ -41,26 +43,26 @@ def run(data):
 #                   2. Displays a corresponding message and exits the script if the 'therm', 'stop', or 'done' flags are received from the controller
 # Parameters:       -
 # Yields:           The latest reading obtained from the controller and a relative time index for when it was received (1s interval)
-def dataGenerator():
-    t = dataGenerator.t
+def data_generator():
+    t = data_generator.t
 
-    while True:
+    while(True):
         t += 1
         value = ser.readline()                                                                          # Obtain temperature readings from serial port
         if(value == b"Therm\n"):
             print()
             print("Error: thermocouple not placed inside oven")
-            time.sleep(5)
+            sleep(5)
             exit()
         elif(value == b"Stop\n"):
             print()
             print("Reflow process stopped by user")
-            time.sleep(5)
+            sleep(5)
             exit()
         elif(value == b"Done\n"):
             print()
             print("Reflow process complete")
-            time.sleep(5)
+            sleep(5)
             exit()
 
         yield t, bytes(value)
@@ -70,9 +72,9 @@ def dataGenerator():
 # Parameters:       minimum - Minimum acceptable value
 #                   maximum - Maximum acceptable value
 # Returns:          The reflow parameter value if valid and successfully sent, False otherwise
-def getParameter(minimum, maximum):
+def get_parameter(minimum, maximum):
     try:
-        value = int(input("- "))                                                                        # Read user input
+        value = int(input("- "))
     except(ValueError):                                                                                 # Determine whether input is an integer
         print("Error: not a number")
         return False
@@ -94,38 +96,38 @@ if(__name__ == "__main__"):
             print("Connection to controller established")
     except(IOError):                                                                                    # Determine whether port has been successfully opened
         print("Error: connection to controller failed")
-        quit()                                                                                          # Exit script if port could not be opened
-    time.sleep(1)
+        quit()
+    sleep(1)
 
     print()
-    print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "C - " + str(MAX_SOAK_TEMP) + "C):")        # Display prompt and acceptable range
-    while(getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP) == False):                                         # Obtain and transmit desired soak temperature
-        soakTemp = getParameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP)
+    print("Enter soak temperature (" + str(MIN_SOAK_TEMP) + "\u2103 - " + str(MAX_SOAK_TEMP) + "\u2103):")  # Display prompt and acceptable range
+    while(get_parameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP) == False):                                            # Obtain and transmit desired soak temperature
+        soakTemp = get_parameter(MIN_SOAK_TEMP, MAX_SOAK_TEMP)
 
     print()
     print("Enter soak time (" + str(MIN_SOAK_TIME) + "s - " + str(MAX_SOAK_TIME) + "s):")               # Display prompt and acceptable range
-    while(getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME) == False):                                         # Obtain and transmit desired soak time
-        soakTime = getParameter(MIN_SOAK_TIME, MAX_SOAK_TIME)
+    while(get_parameter(MIN_SOAK_TIME, MAX_SOAK_TIME) == False):                                        # Obtain and transmit desired soak time
+        soakTime = get_parameter(MIN_SOAK_TIME, MAX_SOAK_TIME)
 
     print()
-    print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "C - " + str(MAX_REFLOW_TEMP) + "C):")  # Display prompt and acceptable range
-    while(getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) == False):                                     # Obtain and transmit desired reflow temperature
-       reflowTemp = getParameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
+    print("Enter reflow temperature (" + str(MIN_REFLOW_TEMP) + "\u2103 - " + str(MAX_REFLOW_TEMP) + "\u2103):")    # Display prompt and acceptable range
+    while(get_parameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP) == False):                                                # Obtain and transmit desired reflow temperature
+        reflowTemp = get_parameter(MIN_REFLOW_TEMP, MAX_REFLOW_TEMP)
 
     print()
     print("Enter reflow time (" + str(MIN_REFLOW_TIME) + "s - " + str(MAX_REFLOW_TIME) + "s):")         # Display prompt and acceptable range
-    while(getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) == False):                                     # Obtain and transmit desired reflow time
-        reflowTime = getParameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
+    while(get_parameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME) == False):                                    # Obtain and transmit desired reflow time
+        reflowTime = get_parameter(MIN_REFLOW_TIME, MAX_REFLOW_TIME)
 
     print()
     print("Press 'set' button to begin reflow cycle")
-    while True:                                                                                         # Wait for start command to be received before ploting graph
+    while(True):                                                                                        # Wait for start command to be received before ploting graph
         if(ser.readline() == b"Start\n"):
             print()
             print("Starting reflow cycle")
             break
 
-    dataGenerator.t = -1                                                                                # Start data generator
+    data_generator.t = -1                                                                               # Start data generator
     fig = plt.figure()                                                                                  # Initialise graph axes
     ax = fig.add_subplot(1, 1, 1)                                                                       # Define a single subplot of grid size 1 x 1
 
@@ -133,11 +135,11 @@ if(__name__ == "__main__"):
     ax.set_ylabel('Temperature (C)')
     ax.set_xlabel('Cycle time (s)')
 
-    line, = ax.plot([], [], lw = 2)
+    line, = ax.plot([], [], lw=2)
     ax.set_ylim(0,255)                                                                                  # Set y-axis scale from 0-255C (maximum controller temperature)
     ax.set_xlim(0,480)                                                                                  # Set x-axis scale from 0-480s (average total cycle time)
     ax.grid()
     xdata, ydata = [], []
 
-    ani = animation.FuncAnimation(fig, run, dataGenerator, blit = False, interval = 100, repeat = False)
+    ani = animation.FuncAnimation(fig, run, data_generator(), blit = False, interval = 100, repeat = False)
     plt.show()
