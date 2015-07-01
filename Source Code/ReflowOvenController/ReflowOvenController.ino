@@ -3,7 +3,7 @@
 // This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
 // See the GNU General Public License for more details.
 
-// Reflow Oven Controller
+// Reflow Oven Controller vX.XX
 
 #include <avr/pgmspace.h>
 
@@ -27,7 +27,7 @@
 #define MEDIUM_BEEP              400
 #define LONG_BEEP                3000
 
-#define OFF                      0                                            // Finite state machine states
+#define OFF                      0                                            // Finite-state machine states
 #define RAMP_TO_SOAK             1
 #define SOAK                     2
 #define RAMP_TO_REFLOW           3
@@ -42,10 +42,10 @@
 #define SOAK_TEMP_OFFSET         15                                           // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET       8                                            // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 
-#define ERROR_TEMP               50                                           // Thermocouple error temperature threshold (stops reflow process if specified temperature is not reached within the first 30 seconds)
+#define ERROR_TEMP               50                                           // Thermocouple error temperature threshold (stops reflow process if not reached within the first 30 seconds)
 #define SAFE_TO_HANDLE_TEMP      60                                           // Safe-to-handle temperature
 
-byte state = OFF;
+byte state = OFF;                                                             // Declare finite-state machine state variable
 
 byte soakTemp;                                                                // Declare thermal profile parameter variables
 byte soakTime;
@@ -108,9 +108,9 @@ void setup()
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
 }
 
-// Description:		Obtains an analog reading for the cold junction from the LM35Z and converts it to a temperature in Celsius 
+// Description:		Obtains an analog reading for the cold junction from the LM35Z and converts it to a temperature in Celsius.
 // Parameters:		-
-// Returns:		A temperature reading for the cold junction in Celsius
+// Returns:		    A temperature reading for the cold junction in Celsius.
 byte getJunctionTemp()
 {
   double junctionReading = 0;
@@ -121,9 +121,9 @@ byte getJunctionTemp()
   return byte(junctionReading);
 }
 
-// Description:		Obtains an analog reading for the thermcouple and converts it to a temperature in Celsius using a LUT
+// Description:		Obtains an analog reading for the thermcouple and converts it to a temperature in Celsius using a LUT.
 // Parameters:		-
-// Returns:		A temperature reading for the thermocouple in Celsius
+// Returns:		    A temperature reading for the thermocouple in Celsius.
 byte getThermTemp()
 {
   double thermReading = 0;
@@ -141,10 +141,10 @@ byte getThermTemp()
 }
 
 // Description:		CTC Interrupt Service Routine for Timer 1
-//                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average to smooth out irregularities in the data
-//                      2. Increments the total cycle time and state time every second
-//                      3. Calculates the current oven temperature every second and displays the current oven temperature in the serial monitor
-//                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR)
+//                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average to smooth out irregularities in the data.
+//                      2. Increments the total cycle time and state time every second.
+//                      3. Calculates the current oven temperature every second and sends the current oven temperature to Python.
+//                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR).
 ISR(TIMER1_COMPA_vect)
 {
   interruptCount++;
@@ -172,9 +172,9 @@ ISR(TIMER1_COMPA_vect)
   digitalWrite(ovenLEDPin, interruptCount > PWMValue ? 0:1);                  // Toggle oven LED to mirror oven state
 }
 
-// Description:		Initialises Timer 1 to interrupt every 10ms
+// Description:		Initialises Timer 1 to interrupt every 10ms.
 // Parameters:		-
-// Returns:		-
+// Returns:		    -
 void initialiseTimer1()
 {
   cli();                                                                      // Disable global interrupts
@@ -188,9 +188,11 @@ void initialiseTimer1()
   sei();                                                                      // Enable global interrupts
 }
 
-// Description:		Receives one of the four thermal profile parameters from Python via the serial port and provides user feedback via the buzzer
+// Description:		1. Receives a thermal profile parameter from Python via the serial port.
+//                2. Echoes the received value back to Python to ensure that the correct data has been received.
+//                3. Provides user feedback via the buzzer.
 // Parameters:		-
-// Returns:		The value of the received thermal profile parameter
+// Returns:		    The value of the received thermal profile parameter.
 int receiveParameter()
 {
   int value = 0;
@@ -200,7 +202,7 @@ int receiveParameter()
     if(Serial.available() > 0)                                                // Check if data has already arrived in the serial receive buffer
     {
       value = Serial.parseInt();                                              // Read data from the buffer and convert to an integer
-      Serial.print(value);                                                    // Echo received value back to Python to check correct data has been received
+      Serial.print(value);                                                    // Echo received value back to Python
       Serial.print("\n");
     }
   }
@@ -211,7 +213,7 @@ int receiveParameter()
 
 void loop() 
 {
-  switch(state)                                                               // Finite state machine control logic
+  switch(state)                                                               // Finite-state machine control logic
   {
     // Idle state
     case OFF:
@@ -220,10 +222,10 @@ void loop()
       digitalWrite(LED1Pin, 0);
       TCCR1B = 0;                                                             // Stop Timer 1
       
-      soakTemp = receiveParameter();                                          // Obtain soak temperature
-      soakTime = receiveParameter();                                          // Obtain soak time
-      reflowTemp = receiveParameter();                                        // Obtain reflow temperature
-      reflowTime = receiveParameter();                                        // Obtain reflow time
+      soakTemp = receiveParameter();                                          // Obtain thermal profile parameters
+      soakTime = receiveParameter();
+      reflowTemp = receiveParameter();
+      reflowTime = receiveParameter();
       
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
@@ -251,7 +253,7 @@ void loop()
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         delay(DEBOUNCE_DELAY);
-        PWMValue = 0;                                                         // Turn off oven
+        PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
         state = OFF;
@@ -259,7 +261,7 @@ void loop()
       }
       if(stateTime == 30 && ovenTemp < ERROR_TEMP)                            // Stop reflow process if oven does not reach the specified error temperature in the first 30s (thermocouple error)
       {
-        PWMValue = 0;                                                         // Turn off oven
+        PWMValue = 0;
         Serial.print("Therm\n");                                              // Send 'thermocouple error' flag to Python
         delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
         state = OFF;
@@ -286,7 +288,7 @@ void loop()
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         delay(DEBOUNCE_DELAY);
-        PWMValue = 0;                                                         // Turn off oven
+        PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
         state = OFF;
@@ -309,7 +311,7 @@ void loop()
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         delay(DEBOUNCE_DELAY);
-        PWMValue = 0;                                                         // Turn off oven
+        PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
         state = OFF;
@@ -336,7 +338,7 @@ void loop()
       {
         while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released
         delay(DEBOUNCE_DELAY);
-        PWMValue = 0;                                                         // Turn off oven
+        PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
         delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
         state = OFF;
@@ -345,7 +347,7 @@ void loop()
       if(stateTime == reflowTime)                                             // Enter cooling state once reflow time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
-        PWMValue = 0;                                                         // Turn oven off
+        PWMValue = 0;
 
         while(digitalRead(setButtonPin) != 0);
         {
@@ -375,7 +377,7 @@ void loop()
         tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);
         
         Serial.print(cycleTime);                                              // Send total reflow cycle time to Python
-        state = OFF;                                                          // Return to off state
+        state = OFF;
       }
       break;
     }

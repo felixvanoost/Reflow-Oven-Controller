@@ -22,12 +22,12 @@ MAX_SOAK_TIME = 90
 MAX_REFLOW_TEMP = 240
 MAX_REFLOW_TIME = 60
 
-soakTemp = 0                                                                        # Global variables for thermal profile parameters
+soakTemp = 0                                                                        # Declare thermal profile parameter variables
 soakTime = 0
 reflowTemp = 0
 reflowTime = 0
 
-# Description:      Closes the temperature plot and serial port and exits the script
+# Description:      Closes the temperature plot and serial port and exits the script.
 # Parameters:       -
 # Returns:          -
 def exit():
@@ -45,13 +45,14 @@ def run(data):
         xdata.append(t)
         ydata.append(y)
         line.set_data(xdata, ydata)
-    return line,
 
-# Description:      1. Generates data for the temperature graph by obtaining readings from the controller through the serial port
-#                   2. Displays a corresponding message and exits the script if the 'therm', 'stop', or 'done' flags are received from the controller
-#                   3. Prompts the user to open the oven door and press the 'set' button when the cooling state has been reached
+    return line
+
+# Description:      1. Generates data for the temperature graph by obtaining readings from the controller through the serial port.
+#                   2. Displays a corresponding message and exits the script if the 'therm', 'stop', or 'done' flags are received from the controller.
+#                   3. Prompts the user to open the oven door and press the 'set' button when the cooling state has been reached.
 # Parameters:       -
-# Yields:           The latest reading obtained from the controller and a relative time index for when it was received (1s interval)
+# Yields:           The latest reading obtained from the controller and a relative time index for when it was received (1s interval).
 def data_generator():
     stateTime = 0
     t = data_generator.t
@@ -79,11 +80,11 @@ def data_generator():
 
         yield t, bytes(value)
 
-# Description:      1. Prompts user to enter the desired value for a given thermal profile parameter and checks user input for validity (within specfied range)
-#                   2. Sends the value to the controller and checks to ensure that the controller has received the correct data
+# Description:      1. Prompts user to enter the desired value for a given thermal profile parameter and checks user input for validity (within specfied range).
+#                   2. Sends the value to the controller and checks to ensure that the controller has received the correct data.
 # Parameters:       minimum - Minimum acceptable value
 #                   maximum - Maximum acceptable value
-# Returns:          The reflow parameter value if valid and successfully sent, False otherwise
+# Returns:          The reflow parameter value if valid and successfully sent, 'False' otherwise.
 def get_parameter(minimum, maximum):
     try:
         value = int(input("- "))
