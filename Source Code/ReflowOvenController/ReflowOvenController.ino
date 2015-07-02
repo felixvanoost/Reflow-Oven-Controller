@@ -35,7 +35,7 @@
 #define COOLING                  5
 
 #define READING_FREQUENCY        2                                            // Frequency of temperature readings (1, 2, or 4Hz)
-#define FILTER_LENGTH            6                                            // Length (window size) of moving average filter
+#define FILTER_WINDOW_SIZE       6                                            // Window size (sample length) of moving average filter
 
 #define SOAK_DUTY_CYCLE          10                                           // Oven PWM duty cycle for soak state (%)
 #define REFLOW_DUTY_CYCLE        20                                           // Oven PWM duty cycle for reflow state (%)
@@ -48,12 +48,17 @@
 
 byte state = OFF;                                                             // Declare finite-state machine state variable
 
-byte soakTemp;                                                                // Declare thermal profile parameter variables
-byte soakTime;
-byte reflowTemp;
-byte reflowTime;
+struct thermalProfile                                                         // Declare thermal profile parameter variables
+{
+  byte soakTemp;
+  byte soakTime;
+  byte reflowTemp;
+  byte reflowTime;
+};
+typedef struct thermalProfile thermalProfile;                                 // Create a thermal profile structure
+thermalProfile custom;
 
-volatile int ovenTempReadings[FILTER_LENGTH];                                 // Declare temperature and moving average filter variables
+volatile int ovenTempReadings[FILTER_WINDOW_SIZE];                            // Declare temperature and moving average filter variables
 volatile byte tempIndex = 0;
 volatile int ovenTempSum = 0;
 volatile int ovenTemp = 0;
@@ -106,9 +111,9 @@ void setup()
   pinMode(ovenLEDPin, OUTPUT);
   
   digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
-  digitalWrite(ovenLEDPin, 0); 
+  digitalWrite(ovenLEDPin, 0);
 
-  for(byte i = 0; i < FILTER_LENGTH; i++)                                     // Initialise oven temperature readings array to 0
+  for(byte i = 0; i < FILTER_WINDOW_SIZE; i++)                                // Initialise oven temperature readings array to 0
   {
     ovenTempReadings[i] = 0;
   }
@@ -161,19 +166,19 @@ ISR(TIMER1_COMPA_vect)
   if(readingIntervalCount == (100 / READING_FREQUENCY))                       // Obtain oven temperature readings at predetermined intervals
   {
     ovenTempSum -= ovenTempReadings[tempIndex];                               // Subtract the old temperature reading from the sum
-    ovenTempReadings[tempIndex] = /*getThermTemp() +*/ getJunctionTemp();         // Obtain the latest oven temperature reading by adding together the thermocouple and cold junction readings
+    ovenTempReadings[tempIndex] = getThermTemp() + getJunctionTemp();         // Obtain the latest oven temperature reading by adding together the thermocouple and cold junction readings
     ovenTempSum += ovenTempReadings[tempIndex];                               // Calculate the new sum
     tempIndex++;
 
-    if(tempIndex > FILTER_LENGTH - 1)                                         // Wrap around to the beginning of the array once the end is reached
+    if(tempIndex > FILTER_WINDOW_SIZE - 1)                                    // Wrap around to the beginning of the array once the end is reached
     {
       tempIndex = 0;
     }
 
-    ovenTemp = ovenTempSum / FILTER_LENGTH;                                   // Calculate the new average oven temperature
+    ovenTemp = ovenTempSum / FILTER_WINDOW_SIZE;                              // Calculate the new average oven temperature
     readingIntervalCount = 0;                                                 // Reset reading interval count
   }
-  if(interruptCount == 100)                                                   // Execute code every second (100 timer overflows)
+  if(interruptCount == 100)                                                   // Execute following code every second (100 * 10ms)
   {
     cycleTime++;                                                              // Increment total cycle and state time variables
     stateTime++;
@@ -237,10 +242,10 @@ void loop()
       digitalWrite(LED1Pin, 0);
       TCCR1B = 0;                                                             // Stop Timer 1
       
-      soakTemp = receiveParameter();                                          // Obtain thermal profile parameters
-      soakTime = receiveParameter();
-      reflowTemp = receiveParameter();
-      reflowTime = receiveParameter();
+      custom.soakTemp = receiveParameter();                                   // Obtain thermal profile parameters
+      custom.soakTime = receiveParameter();
+      custom.reflowTemp = receiveParameter();
+      custom.reflowTime = receiveParameter();
       
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
@@ -282,11 +287,11 @@ void loop()
         state = OFF;
         break;
       }
-      if(ovenTemp > soakTemp - SOAK_TEMP_OFFSET)                              // Turn off oven prematurely to account for embodied heat
+      if(ovenTemp > custom.soakTemp - SOAK_TEMP_OFFSET)                       // Turn off oven prematurely to account for embodied heat
       {
         PWMValue = 0;
       }
-      if(ovenTemp > soakTemp)                                                 // Enter soak state once soak temperature has been reached
+      if(ovenTemp > custom.soakTemp)                                          // Enter soak state once soak temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
@@ -309,7 +314,7 @@ void loop()
         state = OFF;
         break;
       }
-      if(stateTime == soakTime)                                               // Enter ramp to reflow state once soak time has elapsed
+      if(stateTime == custom.soakTime)                                        // Enter ramp to reflow state once soak time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
@@ -332,11 +337,11 @@ void loop()
         state = OFF;
         break;
       }
-      if(ovenTemp > reflowTemp - REFLOW_TEMP_OFFSET)                          // Turn off oven prematurely to account for embodied heat
+      if(ovenTemp > custom.reflowTemp - REFLOW_TEMP_OFFSET)                   // Turn off oven prematurely to account for embodied heat
       {
         PWMValue = 0;
       }
-      if(ovenTemp > reflowTemp)                                               // Enter reflow state once reflow temperature has been reached
+      if(ovenTemp > custom.reflowTemp)                                        // Enter reflow state once reflow temperature has been reached
       {
         stateTime = 0;                                                        // Reset state time
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
@@ -359,7 +364,7 @@ void loop()
         state = OFF;
         break;
       }
-      if(stateTime == reflowTime)                                             // Enter cooling state once reflow time has elapsed
+      if(stateTime == custom.reflowTime)                                      // Enter cooling state once reflow time has elapsed
       {
         stateTime = 0;                                                        // Reset state time
         PWMValue = 0;
