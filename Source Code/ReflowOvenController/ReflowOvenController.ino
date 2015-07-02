@@ -34,7 +34,8 @@
 #define REFLOW                   4
 #define COOLING                  5
 
-#define READING_FREQUENCY        5                                            // Frequency of temperature readings (1, 2, 4, 5, 10, 20, 25, 50, or 100Hz)
+#define READING_FREQUENCY        2                                            // Frequency of temperature readings (1, 2, or 4Hz)
+#define FILTER_LENGTH            6                                            // Length (window size) of moving average filter
 
 #define SOAK_DUTY_CYCLE          10                                           // Oven PWM duty cycle for soak state (%)
 #define REFLOW_DUTY_CYCLE        20                                           // Oven PWM duty cycle for reflow state (%)
@@ -52,8 +53,10 @@ byte soakTime;
 byte reflowTemp;
 byte reflowTime;
 
-int ovenTempSum = 0;                                                          // Declare temperature variables
-int ovenTemp = 0;
+volatile int ovenTempReadings[FILTER_LENGTH];                                 // Declare temperature and moving average filter variables
+volatile byte tempIndex = 0;
+volatile int ovenTempSum = 0;
+volatile int ovenTemp = 0;
 
 volatile unsigned int cycleTime = 0;                                          // Declare time variables
 volatile byte stateTime = 0;
@@ -104,6 +107,11 @@ void setup()
   
   digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
   digitalWrite(ovenLEDPin, 0); 
+
+  for(byte i = 0; i < FILTER_LENGTH; i++)                                     // Initialise oven temperature readings array to 0
+  {
+    ovenTempReadings[i] = 0;
+  }
   
   Serial.begin(9600);                                                         // Initialise serial port at 9600 baud
 }
@@ -141,34 +149,41 @@ byte getThermTemp()
 }
 
 // Description:		CTC Interrupt Service Routine for Timer 1
-//                      1. Obtains temperature readings for the thermocouple and cold junction at an defined frequency and calculates the average to smooth out irregularities in the data.
-//                      2. Increments the total cycle time and state time every second.
-//                      3. Calculates the current oven temperature every second and sends the current oven temperature to Python.
-//                      4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR).
+//                1. Obtains oven temperature readings at a predetermined frequency (1-4Hz) and implements a moving average filter to smooth irregularities in the data.
+//                2. Increments the total cycle time and state time every second.
+//                3. Calculates the current oven temperature every second and sends the current oven temperature to Python.
+//                4. Controls the oven using a slow form of PWM (due to switching speed limitations of the SSR).
 ISR(TIMER1_COMPA_vect)
 {
   interruptCount++;
   readingIntervalCount++;
   
-  if(readingIntervalCount == (100 / READING_FREQUENCY))                       // Obtain temperature readings for the thermocouple and cold junction at regular intervals and calculate cumulative sum
+  if(readingIntervalCount == (100 / READING_FREQUENCY))                       // Obtain oven temperature readings at predetermined intervals
   {
-    ovenTempSum += /*getThermTemp() +*/ getJunctionTemp();
-    readingIntervalCount = 0;
+    ovenTempSum -= ovenTempReadings[tempIndex];                               // Subtract the old temperature reading from the sum
+    ovenTempReadings[tempIndex] = /*getThermTemp() +*/ getJunctionTemp();         // Obtain the latest oven temperature reading by adding together the thermocouple and cold junction readings
+    ovenTempSum += ovenTempReadings[tempIndex];                               // Calculate the new sum
+    tempIndex++;
+
+    if(tempIndex > FILTER_LENGTH - 1)                                         // Wrap around to the beginning of the array once the end is reached
+    {
+      tempIndex = 0;
+    }
+
+    ovenTemp = ovenTempSum / FILTER_LENGTH;                                   // Calculate the new average oven temperature
+    readingIntervalCount = 0;                                                 // Reset reading interval count
   }
-  
   if(interruptCount == 100)                                                   // Execute code every second (100 timer overflows)
   {
     cycleTime++;                                                              // Increment total cycle and state time variables
     stateTime++;
-  
-    ovenTemp = ovenTempSum / READING_FREQUENCY;                               // Calculate current oven temperature by finding the average value of previously gathered temperature readings
+
     Serial.print(ovenTemp);                                                   // Display current oven temperature
     Serial.print("\n");
     
-    interruptCount = 0;                                                       // Reset interrupt count and sum of oven temperatu"re readings
-    ovenTempSum = 0;
+    interruptCount = 0;                                                       // Reset interrupt count
   }
-  digitalWrite(ovenPin, interruptCount > PWMValue ? 0:1);                     // Turn off oven if interruptCount > PWMValue or turn on if interruptCount < PWMValue
+  digitalWrite(ovenPin, interruptCount > PWMValue ? 0:1);                     // Turn oven off if interruptCount > PWMValue or turn on if interruptCount < PWMValue
   digitalWrite(ovenLEDPin, interruptCount > PWMValue ? 0:1);                  // Toggle oven LED to mirror oven state
 }
 
@@ -178,7 +193,7 @@ ISR(TIMER1_COMPA_vect)
 void initialiseTimer1()
 {
   cli();                                                                      // Disable global interrupts
-  TCCR1A = 0;                                                                 // Reset Timer 1 registers
+  TCCR1A = 0;                                                                 // Reset Timer 1 configuration registers
   TCCR1B = 0;
   TCNT1 = 0;                                                                  // Load Timer 1 with 0
   OCR1A = 0x4E1F;                                                             // Load output compare register with 19,999 to create a compare match interrupt every 10ms
@@ -211,7 +226,7 @@ int receiveParameter()
   return byte(value);
 }
 
-void loop() 
+void loop()
 {
   switch(state)                                                               // Finite-state machine control logic
   {

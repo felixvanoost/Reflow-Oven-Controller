@@ -72,7 +72,7 @@ def data_generator():
             print()
             print("Reflow process complete")
             exit()
-        elif(value > reflowTemp):                                                   # Determine when cooling state has been reached (end of reflow state)
+        elif(int(value) > reflowTemp):                                              # Determine when cooling state has been reached (end of reflow state)
             stateTime += 1
             if(stateTime > reflowTime):
                 print("Please open oven door now")
