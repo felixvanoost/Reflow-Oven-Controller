@@ -42,7 +42,7 @@ The Python script prompts the user to enter the desired values for each paramete
 The Arduino uses a finite state machine to implement the control logic, with a state corresponding to each stage in the reflow cycle. It controls the toaster oven using time-proportional control (a slower form of PWM). User feedback is provided via a set of LEDs and a buzzer.
 
 ----------
-Required Hardware
+Hardware
 ----------
 
 The hardware is split into the following main functional blocks:
@@ -77,10 +77,12 @@ The OP07 was chosen for its low input voltage characteristics (as the thermocoup
 I decided to mount the hardware on an [OSEPP Proto Shield](http://osepp.com/products/shield-arduino-compatible/proto-shield/) (functionally identical to the [Sparkfun ProtoShield Kit](https://www.sparkfun.com/products/7914)), which comes pre-installed with a pushbutton and two LEDs. This reduces the number of components that need to be soldered to the board and simplifies the layout and assembly process. A full hardware schematic is provided in the 'Hardware' folder, and a few photos of the completed shield (one of many possible board layouts) can be found in the 'Photos' folder.
 
 ----------
-Required Software
+Software
 ----------
+
+The following software is required:
 
 - Arduino IDE (latest version preferred)
 - Python 3.4.2 (I opted to use IDLE in [WinPython](http://winpython.github.io/) 3.4.3.3 to run the Python UI script)
 
-Further information about software / firmware setup and a detailed overview of the control logic used is provided with each major release in the 'releases' section.
+Further information about software / firmware setup and a detailed overview of the control logic is provided with each major release in the 'releases' section. Releases are versioned in the form vX.Y.ZZ, where X indicates a major new release, Y indicates a minor feature addition / update, and ZZ denotes a simple bug fix.
