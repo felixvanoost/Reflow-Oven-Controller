@@ -24,7 +24,7 @@ Overview
 
 This project consists of three main components:
 
-- An off-the-shelf toaster oven with SSR installed.
+- An off-the-shelf toaster oven fitted with a solid-state relay (SSR).
 - An Arduino Uno to monitor and control the oven to follow a user-defined thermal profile.
 - A Python script to provide a text-based UI for the Arduino and display a live plot of the oven temperature data on a computer.
 
