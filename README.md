@@ -28,7 +28,7 @@ This project consists of three main components:
 - An Arduino Uno to monitor and control the oven to follow a user-defined thermal profile.
 - A Python script to provide a text-based UI for the Arduino and display a live plot of the oven temperature data on a computer.
 
-To help limit the scope somewhat, I will assume that a suitable oven has been purchased and an SSR has already been installed within - there are a number of very good tutorials describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
+To help keep the scope sufficiently narrow, I will assume that a suitable oven has been purchased and an SSR has already been installed within - there are a number of very good tutorials describing how to do this step-by-step. Information on choosing a suitable toaster oven for reflow soldering can be found [here](http://www.rocketscream.com/blog/2011/06/19/toaster-convection-or-infrared-oven/).
 
 Four thermal profile parameters are user-configurable:
 
@@ -66,7 +66,7 @@ The following components are used:
 - 2x 8-DIP sockets
 - 3x Pushbuttons (1 for start / stop, others for future additional functionality)
 - 2x 5mm LEDs
-- 2x 10uF capacitors
+- 2x 10µF electrolytic capacitors
 - 2x 100Ω resistors
 - 2x 330Ω resistors
 - 3x 10kΩ resistors
