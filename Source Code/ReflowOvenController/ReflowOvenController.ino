@@ -7,48 +7,50 @@
 
 #include <avr/pgmspace.h>
 
-#define thermPin                 A0                                           // Thermocouple input pin (A0)
-#define junctionPin              A1                                           // Cold junction input pin (A1)
+#define thermPin                     A0                                       // Thermocouple input pin (A0)
+#define junctionPin                  A1                                       // Cold junction input pin (A1)
 
-#define setButtonPin             2                                            // Pushbutton input pins (D2-D4)
-#define Button1Pin               3
-#define Button2Pin               4
-#define ovenPin                  5                                            // Oven SSR pin (D5)
-#define buzzerPin                6                                            // Buzzer output pin (D6)
-#define LED1Pin                  7                                            // LED output pins (D7-D8)
-#define ovenLEDPin               8
+#define setButtonPin                 2                                        // Pushbutton input pins (D2-D4)
+#define Button1Pin                   3
+#define Button2Pin                   4
+#define ovenPin                      5                                        // Oven SSR pin (D5)
+#define buzzerPin                    6                                        // Buzzer output pin (D6)
+#define LED1Pin                      7                                        // LED output pins (D7-D8)
+#define ovenLEDPin                   8
 
-#define DEBOUNCE_DELAY           100                                          // Pushbutton debounce delay (ms)
+#define DEBOUNCE_DELAY               50                                       // Pushbutton debounce delay (ms)
 
-#define LOW_BUZZER_FREQ          3000                                         // Buzzer frequencies (Hz)
-#define MID_BUZZER_FREQ          4000
-#define HIGH_BUZZER_FREQ         5000
-#define SHORT_BEEP               100                                          // Buzzer beep lengths (ms)
-#define MEDIUM_BEEP              400
-#define LONG_BEEP                3000
+#define LOW_BUZZER_FREQ              3000                                     // Buzzer frequencies (Hz)
+#define MID_BUZZER_FREQ              4000
+#define HIGH_BUZZER_FREQ             5000
+#define SHORT_BEEP                   100                                      // Buzzer beep lengths (ms)
+#define MEDIUM_BEEP                  400
+#define LONG_BEEP                    3000
 
-#define OFF                      0                                            // Finite-state machine states
-#define RAMP_TO_SOAK             1
-#define SOAK                     2
-#define RAMP_TO_REFLOW           3
-#define REFLOW                   4
-#define COOLING                  5
+#define OFF                          0                                        // Finite-state machine states
+#define RAMP_TO_SOAK                 1
+#define SOAK                         2
+#define RAMP_TO_REFLOW               3
+#define REFLOW                       4
+#define COOLING                      5
 
-#define READING_FREQUENCY        2                                            // Frequency of temperature readings (1, 2, or 4Hz)
-#define FILTER_WINDOW_SIZE       6                                            // Window size (sample length) of moving average filter
+#define READING_FREQUENCY            2                                        // Frequency of temperature readings (1, 2, or 4Hz)
+#define FILTER_WINDOW_SIZE           6                                        // Window size (sample length) of moving average filter
 
-#define SOAK_DUTY_CYCLE          10                                           // Oven PWM duty cycle for soak state (%)
-#define REFLOW_DUTY_CYCLE        20                                           // Oven PWM duty cycle for reflow state (%)
+#define RAMP_TO_SOAK_DUTY_CYCLE      100                                      // Oven PWM duty cycles (%)
+#define RAMP_TO_REFLOW_DUTY_CYCLE    100
+#define SOAK_DUTY_CYCLE              10
+#define REFLOW_DUTY_CYCLE            20
 
-#define SOAK_TEMP_OFFSET         15                                           // Soak temperature offset (to account for embodied heat in oven at soak stage)
-#define REFLOW_TEMP_OFFSET       8                                            // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
+#define SOAK_TEMP_OFFSET             15                                       // Soak temperature offset (to account for embodied heat in oven at soak stage)
+#define REFLOW_TEMP_OFFSET           8                                        // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 
-#define ERROR_TEMP               50                                           // Thermocouple error temperature threshold (stops reflow process if not reached within the first 30 seconds)
-#define SAFE_TO_HANDLE_TEMP      60                                           // Safe-to-handle temperature
+#define ERROR_TEMP                   50                                       // Thermocouple error temperature threshold (stops reflow process if not reached within the first 30 seconds)
+#define SAFE_TO_HANDLE_TEMP          60                                       // Safe-to-handle temperature
 
-byte state = OFF;                                                             // Declare finite-state machine state variable
+byte state = OFF;
 
-struct thermalProfile                                                         // Declare thermal profile parameter variables
+struct thermalProfile
 {
   byte soakTemp;
   byte soakTime;
@@ -58,19 +60,19 @@ struct thermalProfile                                                         //
 typedef struct thermalProfile thermalProfile;                                 // Create a thermal profile structure
 thermalProfile custom;
 
-volatile int ovenTempReadings[FILTER_WINDOW_SIZE];                            // Declare temperature and moving average filter variables
+volatile unsigned int ovenTempReadings[FILTER_WINDOW_SIZE];
 volatile byte tempIndex = 0;
-volatile int ovenTempSum = 0;
-volatile int ovenTemp = 0;
+volatile unsigned int ovenTempSum = 0;
+volatile unsigned int ovenTemp = 0;
 
-volatile unsigned int cycleTime = 0;                                          // Declare time variables
+volatile unsigned int cycleTime = 0;
 volatile byte stateTime = 0;
 
-volatile byte interruptCount = 0;                                             // Declare Timer 1 interrupt count variable
-volatile byte readingIntervalCount = 0;                                       // Declare Timer 1 reading interval count variable
-volatile byte PWMValue = 0;                                                   // Declare PWM duty cycle variable for oven SSR control
+volatile byte interruptCount = 0;
+volatile byte readingIntervalCount = 0;
+volatile byte PWMValue = 0;
 
-// 0-255C LUT for K-type thermocouple (stored in program memory)
+// 0-255C LUT for K-type thermocouple in mV (stored in program memory)
 const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  149,  168,
                                 187,  205,  224,  243,  262,  281,  299,  318,  337,  356,
                                 375,  394,  413,  432,  451,  470,  489,  508,  527,  547,
@@ -100,17 +102,17 @@ const int thermLUT[] PROGMEM = {0,    18,   37,   56,   74,   93,   112,  130,  
 
 void setup() 
 {
-  pinMode(thermPin, INPUT);                                                   // Declare thermocouple and temperature sensor pins as inputs
+  pinMode(thermPin, INPUT);
   pinMode(junctionPin, INPUT);
-  pinMode(setButtonPin, INPUT_PULLUP);                                        // Declare pushbutton pins as inputs with internal pull-up resistors enabled
+  pinMode(setButtonPin, INPUT_PULLUP);                                        // Enable internal pull-up resistors on pushbutton pins
   pinMode(Button1Pin, INPUT_PULLUP);
   pinMode(Button2Pin, INPUT_PULLUP);
-  pinMode(ovenPin, OUTPUT);                                                   // Declare oven, buzzer, and LED pins as outputs
+  pinMode(ovenPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
   pinMode(LED1Pin, OUTPUT);
   pinMode(ovenLEDPin, OUTPUT);
   
-  digitalWrite(LED1Pin, 0);                                                   // Turn off LEDs
+  digitalWrite(LED1Pin, 0);
   digitalWrite(ovenLEDPin, 0);
 
   for(byte i = 0; i < FILTER_WINDOW_SIZE; i++)                                // Initialise oven temperature readings array to 0
@@ -176,17 +178,17 @@ ISR(TIMER1_COMPA_vect)
     }
 
     ovenTemp = ovenTempSum / FILTER_WINDOW_SIZE;                              // Calculate the new average oven temperature
-    readingIntervalCount = 0;                                                 // Reset reading interval count
+    readingIntervalCount = 0;
   }
   if(interruptCount == 100)                                                   // Execute following code every second (100 * 10ms)
   {
-    cycleTime++;                                                              // Increment total cycle and state time variables
+    cycleTime++;
     stateTime++;
 
-    Serial.print(ovenTemp);                                                   // Display current oven temperature
+    Serial.print(ovenTemp);                                                   // Send current oven temperature to Python
     Serial.print("\n");
     
-    interruptCount = 0;                                                       // Reset interrupt count
+    interruptCount = 0;
   }
   digitalWrite(ovenPin, interruptCount > PWMValue ? 0:1);                     // Turn oven off if interruptCount > PWMValue or turn on if interruptCount < PWMValue
   digitalWrite(ovenLEDPin, interruptCount > PWMValue ? 0:1);                  // Toggle oven LED to mirror oven state
@@ -219,7 +221,7 @@ int receiveParameter()
   
   while(value == 0)
   {
-    if(Serial.available() > 0)                                                // Check if data has already arrived in the serial receive buffer
+    if(Serial.available() > 0)                                                // Check if data has arrived in the serial receive buffer
     {
       value = Serial.parseInt();                                              // Read data from the buffer and convert to an integer
       Serial.print(value);                                                    // Echo received value back to Python
@@ -238,7 +240,7 @@ void loop()
     // Idle state
     case OFF:
     {
-      cycleTime = 0;                                                          // Reset cycle time
+      cycleTime = 0;
       digitalWrite(LED1Pin, 0);
       TCCR1B = 0;                                                             // Stop Timer 1
       
@@ -250,7 +252,7 @@ void loop()
       while(digitalRead(setButtonPin) != 0);                                  // Wait for set button to be pressed to begin the reflow process
       while(digitalRead(setButtonPin) == 0);                                  // Wait for set button to be released      
       delay(DEBOUNCE_DELAY);
-      digitalWrite(LED1Pin, 1);                                               // Turn on LED1
+      digitalWrite(LED1Pin, 1);
       Serial.print("Start\n");                                                // Send 'start' flag to Python
 
       tone(buzzerPin, LOW_BUZZER_FREQ, MEDIUM_BEEP);                          // Play start melody
@@ -260,14 +262,14 @@ void loop()
       tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);
      
       initialiseTimer1();
-      stateTime = 0;                                                          // Reset state time
-      state = RAMP_TO_SOAK;                                                   // Enter ramp to soak state
+      stateTime = 0;
+      state = RAMP_TO_SOAK;
       break;
     }
     // Ramp to soak state
     case RAMP_TO_SOAK:
     { 
-      PWMValue = 100;                                                         // Set oven duty cycle to 100%
+      PWMValue = RAMP_TO_SOAK_DUTY_CYCLE;
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -275,7 +277,7 @@ void loop()
         delay(DEBOUNCE_DELAY);
         PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
-        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
+        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before returning to Idle state
         state = OFF;
         break;
       }
@@ -283,7 +285,7 @@ void loop()
       {
         PWMValue = 0;
         Serial.print("Therm\n");                                              // Send 'thermocouple error' flag to Python
-        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
+        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before returning to Idle state
         state = OFF;
         break;
       }
@@ -293,7 +295,7 @@ void loop()
       }
       if(ovenTemp > custom.soakTemp)                                          // Enter soak state once soak temperature has been reached
       {
-        stateTime = 0;                                                        // Reset state time
+        stateTime = 0;
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = SOAK;
       }
@@ -302,7 +304,7 @@ void loop()
     // Soak state
     case SOAK:
     {
-      PWMValue = SOAK_DUTY_CYCLE;                                             // Set corresponding oven PWM duty cycle
+      PWMValue = SOAK_DUTY_CYCLE;
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -310,13 +312,13 @@ void loop()
         delay(DEBOUNCE_DELAY);
         PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
-        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
+        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before returning to Idle state
         state = OFF;
         break;
       }
       if(stateTime == custom.soakTime)                                        // Enter ramp to reflow state once soak time has elapsed
       {
-        stateTime = 0;                                                        // Reset state time
+        stateTime = 0;
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = RAMP_TO_REFLOW;
       }
@@ -325,7 +327,7 @@ void loop()
     // Ramp to reflow state
     case RAMP_TO_REFLOW:
     {
-      PWMValue = 100;                                                         // Set oven PWM duty cycle to 100%
+      PWMValue = RAMP_TO_REFLOW_DUTY_CYCLE;
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -333,7 +335,7 @@ void loop()
         delay(DEBOUNCE_DELAY);
         PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
-        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
+        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before returning to Idle state
         state = OFF;
         break;
       }
@@ -343,7 +345,7 @@ void loop()
       }
       if(ovenTemp > custom.reflowTemp)                                        // Enter reflow state once reflow temperature has been reached
       {
-        stateTime = 0;                                                        // Reset state time
+        stateTime = 0;
         tone(buzzerPin, MID_BUZZER_FREQ, MEDIUM_BEEP);
         state = REFLOW;
       }
@@ -352,7 +354,7 @@ void loop()
     // Reflow state
     case REFLOW:
     {
-      PWMValue = REFLOW_DUTY_CYCLE;                                           // Set corresponding oven PWM duty cycle
+      PWMValue = REFLOW_DUTY_CYCLE;
       
       if(digitalRead(setButtonPin) == 0)                                      // Stop reflow process if set button is pressed
       {
@@ -360,13 +362,13 @@ void loop()
         delay(DEBOUNCE_DELAY);
         PWMValue = 0;
         Serial.print("Stop\n");                                               // Send 'stop' flag to Python
-        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before it is stopped (upon returning to Idle state)
+        delay(10);                                                            // Ensure Timer 1 ISR is given enough time to execute and turn off the oven before returning to Idle state
         state = OFF;
         break;
       }
       if(stateTime == custom.reflowTime)                                      // Enter cooling state once reflow time has elapsed
       {
-        stateTime = 0;                                                        // Reset state time
+        stateTime = 0;
         PWMValue = 0;
 
         while(digitalRead(setButtonPin) != 0);
@@ -384,10 +386,10 @@ void loop()
     {
       if(ovenTemp < SAFE_TO_HANDLE_TEMP)                                      // Finish reflow process once safe-to-handle temperature is reached
       {
-        stateTime = 0;                                                        // Reset state time
+        stateTime = 0;
         TCCR1B = 0;                                                           // Stop Timer 1
         
-        digitalWrite(LED1Pin, 0);                                             // Turn off LED1
+        digitalWrite(LED1Pin, 0);
         Serial.print("Done\n");                                               // Send 'done' flag to Python
         
         tone(buzzerPin, HIGH_BUZZER_FREQ, MEDIUM_BEEP);                       // Play end melody
