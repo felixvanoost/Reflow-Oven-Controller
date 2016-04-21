@@ -1,9 +1,9 @@
-// Copyright Felix van Oost 2015.
+// Copyright Felix van Oost 2016.
 // This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 // This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
 // See the GNU General Public License for more details.
 
-// Reflow Oven Controller vX.XX
+// Reflow Oven Controller v1.0.00
 
 #include <avr/pgmspace.h>
 
@@ -34,18 +34,18 @@
 #define REFLOW                       4
 #define COOLING                      5
 
-#define READING_FREQUENCY            2                                        // Frequency of temperature readings (1, 2, or 4Hz)
-#define FILTER_WINDOW_SIZE           6                                        // Window size (sample length) of moving average filter
+#define READING_FREQUENCY            1                                        // Frequency of temperature readings (1, 2, or 4Hz)
+#define FILTER_WINDOW_SIZE           1                                        // Window size (sample length) of moving average filter
 
 #define RAMP_TO_SOAK_DUTY_CYCLE      100                                      // Oven PWM duty cycles (%)
 #define RAMP_TO_REFLOW_DUTY_CYCLE    100
 #define SOAK_DUTY_CYCLE              10
-#define REFLOW_DUTY_CYCLE            20
+#define REFLOW_DUTY_CYCLE            40
 
 #define SOAK_TEMP_OFFSET             15                                       // Soak temperature offset (to account for embodied heat in oven at soak stage)
 #define REFLOW_TEMP_OFFSET           8                                        // Reflow temperature offset (to account for embodied heat in oven at reflow stage)
 
-#define ERROR_TEMP                   50                                       // Thermocouple error temperature threshold (stops reflow process if not reached within the first 30 seconds)
+#define ERROR_TEMP                   40                                       // Thermocouple error temperature threshold (stops reflow process if not reached within the first 30 seconds)
 #define SAFE_TO_HANDLE_TEMP          60                                       // Safe-to-handle temperature
 
 byte state = OFF;
@@ -370,13 +370,7 @@ void loop()
       {
         stateTime = 0;
         PWMValue = 0;
-
-        while(digitalRead(setButtonPin) != 0);
-        {
-          tone(buzzerPin, MID_BUZZER_FREQ);                                   // Alert user to open oven door
-        }
-        while(digitalRead(setButtonPin) == 0);                                // Wait for set button to be released before turning off buzzer
-        noTone(buzzerPin);
+        tone(buzzerPin, MID_BUZZER_FREQ, LONG_BEEP);                          // Alert user to open oven door
         state = COOLING;
       }
       break;

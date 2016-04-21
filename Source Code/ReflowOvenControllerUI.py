@@ -1,13 +1,13 @@
-# Copyright Felix van Oost 2015.
+# Copyright Felix van Oost 2016.
 # This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
 # See the GNU General Public License for more details.
 
-# Reflow Oven Controller vX.XX
+# Reflow Oven Controller v1.0.00
 
+from time import sleep
 import sys
 import serial
-from time import sleep
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -31,7 +31,6 @@ reflowTime = 0
 # Parameters:       -
 # Returns:          -
 def exit():
-    print()
     print("Exiting Python")
     sleep(4)
     plt.close()
@@ -62,13 +61,16 @@ def data_generator():
         value = ser.readline()                                                      # Obtain temperature readings from serial port
         if(value == b"Therm\n"):
             print()
-            print("Error: thermocouple not placed inside oven")
+            print()
+            print("Error: thermocouple failure")
             exit()
         elif(value == b"Stop\n"):
+            print()
             print()
             print("Reflow process stopped by user")
             exit()
         elif(value == b"Done\n"):
+            print()
             print()
             print("Reflow process complete")
             exit()
@@ -105,7 +107,7 @@ def get_parameter(minimum, maximum):
 # Main module
 if(__name__ == "__main__"):
     try:
-        ser = serial.Serial("COM3", 9600)                                           # Configure and open serial port
+        ser = serial.Serial("COM4", 9600)                                           # Configure and open serial port
         if(ser.isOpen() == True):
             print("Connection to controller established")
     except(IOError):                                                                # Determine whether port has been successfully opened
@@ -151,6 +153,7 @@ if(__name__ == "__main__"):
 
     data_generator.t = -1                                                           # Start data generator
     fig = plt.figure()                                                              # Initialise graph axes
+    #fig.canvas.mpl_connect('close_event', exit())
     ax = fig.add_subplot(1, 1, 1)                                                   # Define a single subplot of grid size 1 x 1
 
     ax.set_title('Reflow Oven Controller vX.XX')                                    # Format axes labels
