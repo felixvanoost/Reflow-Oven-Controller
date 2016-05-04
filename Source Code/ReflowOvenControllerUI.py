@@ -78,7 +78,6 @@ def data_generator():
             stateTime += 1
             if(stateTime > reflowTime):
                 print("Please open oven door now")
-                print("Press 'set' button to acknowledge and cancel alarm")
 
         yield t, bytes(value)
 
@@ -107,7 +106,7 @@ def get_parameter(minimum, maximum):
 # Main module
 if(__name__ == "__main__"):
     try:
-        ser = serial.Serial("COM4", 9600)                                           # Configure and open serial port
+        ser = serial.Serial("COM5", 9600)                                           # Configure and open serial port
         if(ser.isOpen() == True):
             print("Connection to controller established")
     except(IOError):                                                                # Determine whether port has been successfully opened
@@ -156,7 +155,7 @@ if(__name__ == "__main__"):
     #fig.canvas.mpl_connect('close_event', exit())
     ax = fig.add_subplot(1, 1, 1)                                                   # Define a single subplot of grid size 1 x 1
 
-    ax.set_title('Reflow Oven Controller vX.XX')                                    # Format axes labels
+    ax.set_title('Reflow Oven Controller v1.0.00')                                  # Format axes labels
     ax.set_ylabel('Temperature (C)')
     ax.set_xlabel('Cycle time (s)')
 
